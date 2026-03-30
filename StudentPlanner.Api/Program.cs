@@ -54,7 +54,7 @@ namespace StudentPlanner.Api
                 })
                 .AddJwtBearer(options =>
                 {
-                    options.RequireHttpsMetadata = false;
+                    options.RequireHttpsMetadata = false; //TODO: ensure true in production
                     options.SaveToken = true;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {

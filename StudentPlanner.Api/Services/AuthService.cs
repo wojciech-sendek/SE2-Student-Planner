@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using StudentPlanner.Api.Data;
 using StudentPlanner.Api.Dtos.Auth;
 using StudentPlanner.Api.Entities;
 using StudentPlanner.Api.Services.Interfaces;
@@ -10,6 +11,7 @@ namespace StudentPlanner.Api.Services
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IJwtTokenService _jwtTokenService;
+        private readonly ApplicationDbContext _dbContext;
 
         //TODO: move to config
         private static readonly string[] AllowedEmailDomains =
@@ -19,10 +21,12 @@ namespace StudentPlanner.Api.Services
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
-            IJwtTokenService jwtTokenService)
+            IJwtTokenService jwtTokenService,
+            ApplicationDbContext dbContext)
         {
             _userManager = userManager;
             _jwtTokenService = jwtTokenService;
+            _dbContext = dbContext;
         }
 
         public async Task<(bool Succeeded, IEnumerable<string> Errors)> RegisterAsync(RegisterRequestDto dto)
@@ -54,7 +58,8 @@ namespace StudentPlanner.Api.Services
             {
                 UserName = dto.Email,
                 Email = dto.Email,
-                FacultyId = dto.FacultyId
+                FirstName = dto.FirstName,
+                LastName = dto.LastName
             };
 
             var result = await _userManager.CreateAsync(user, dto.Password);
@@ -65,6 +70,22 @@ namespace StudentPlanner.Api.Services
                 return (false, errors);
             }
 
+            var universityFaculty = await _dbContext.Faculties
+                .FirstOrDefaultAsync(f => f.Name == "University");
+
+            if (universityFaculty is not null)
+                user.Faculties.Add(universityFaculty);
+
+            if (dto.FacultyId.HasValue)
+            {
+                var departmentFaculty = await _dbContext.Faculties
+                    .FirstOrDefaultAsync(f => f.Id == dto.FacultyId.Value);
+
+                if (departmentFaculty is not null)
+                    user.Faculties.Add(departmentFaculty);
+            }
+
+            await _userManager.UpdateAsync(user);
             await _userManager.AddToRoleAsync(user, "User");
 
             return (true, Enumerable.Empty<string>());

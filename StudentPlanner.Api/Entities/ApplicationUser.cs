@@ -4,7 +4,8 @@ namespace StudentPlanner.Api.Entities
 {
     public class ApplicationUser : IdentityUser
     {
-        public int? FacultyId { get; set; }
-        public Faculty? Faculty { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public ICollection<Faculty> Faculties { get; set; } = new List<Faculty>();
     }
 }

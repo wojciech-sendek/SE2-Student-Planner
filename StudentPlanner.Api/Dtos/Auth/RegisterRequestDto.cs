@@ -16,5 +16,11 @@ namespace StudentPlanner.Api.Dtos.Auth
         public string ConfirmPassword { get; set; } = null!;
 
         public int? FacultyId { get; set; }
+
+        [Required]
+        public string FirstName { get; set; } = null!;
+
+        [Required]
+        public string LastName { get; set; } = null!;
     }
 }

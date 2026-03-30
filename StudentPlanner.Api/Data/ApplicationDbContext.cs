@@ -35,13 +35,9 @@ namespace StudentPlanner.Api.Data
                     .IsUnique();
             });
 
-            builder.Entity<ApplicationUser>(entity =>
-            {
-                entity.HasOne(u => u.Faculty)
-                    .WithMany(f => f.Users)
-                    .HasForeignKey(u => u.FacultyId)
-                    .OnDelete(DeleteBehavior.SetNull);
-            });
+            builder.Entity<ApplicationUser>()
+                .HasMany(u => u.Faculties)
+                .WithMany(f => f.Users);
 
             builder.Entity<PersonalEvent>(entity =>
             {
