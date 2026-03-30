@@ -33,12 +33,6 @@ namespace StudentPlanner.Api.Services
         {
             var errors = new List<string>();
 
-            if (dto.Password != dto.ConfirmPassword)
-            {
-                errors.Add("Passwords do not match.");
-                return (false, errors);
-            }
-
             if (!IsAllowedUniversityEmail(dto.Email))
             {
                 errors.Add("Please enter a valid university email.");
