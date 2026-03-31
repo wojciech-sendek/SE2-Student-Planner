@@ -1,4 +1,5 @@
 import { useId, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 const REMEMBER_EMAIL_KEY = 'student-planner-remember-email'
 
@@ -211,9 +212,12 @@ export default function LoginPage() {
 
               <p className="text-center text-sm text-slate-600">
                 No account yet?{' '}
-                <span className="text-slate-500" title="Register page — next step">
-                  Register (coming next)
-                </span>
+                <Link
+                  to="/register"
+                  className="font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus-visible:underline"
+                >
+                  Register
+                </Link>
               </p>
             </form>
           ) : (
