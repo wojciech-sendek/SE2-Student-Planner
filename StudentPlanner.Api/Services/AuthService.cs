@@ -65,7 +65,7 @@ namespace StudentPlanner.Api.Services
             }
 
             var universityFaculty = await _dbContext.Faculties
-                .FirstOrDefaultAsync(f => f.Name == "University");
+                .FirstOrDefaultAsync(f => f.Name == "university");
 
             if (universityFaculty is not null)
                 user.Faculties.Add(universityFaculty);
