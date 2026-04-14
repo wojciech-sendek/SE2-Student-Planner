@@ -1,22 +1,39 @@
 import { useId, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { register } from '../api/authApi.js'
+import { HttpError, extractErrorMessages } from '../api/httpError.js'
 
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
+function isUniversityEmail(value) {
+  return value.trim().toLowerCase().endsWith('@pw.edu.pl')
+}
+
+function meetsPasswordPolicy(p) {
+  if (p.length < 8) return false
+  if (!/[0-9]/.test(p)) return false
+  if (!/[A-Z]/.test(p)) return false
+  if (!/[a-z]/.test(p)) return false
+  return true
 }
 
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-slate-900 shadow-sm outline-none ring-indigo-500/0 transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20'
 
 export default function RegisterPage() {
+  const navigate = useNavigate()
   const id = useId()
-  const nameId = `${id}-name`
+  const firstNameId = `${id}-first`
+  const lastNameId = `${id}-last`
   const emailId = `${id}-email`
   const passwordId = `${id}-password`
   const confirmId = `${id}-confirm`
   const termsId = `${id}-terms`
 
-  const [displayName, setDisplayName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -24,19 +41,26 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
 
   const [errors, setErrors] = useState({})
-  const [registerSuccess, setRegisterSuccess] = useState(false)
+  const [apiError, setApiError] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   function validate() {
     const next = {}
-    const nameTrim = displayName.trim()
-    if (!nameTrim) next.displayName = 'Name is required.'
-    else if (nameTrim.length < 2) next.displayName = 'Use at least 2 characters.'
+    if (!firstName.trim()) next.firstName = 'First name is required.'
+
+    if (!lastName.trim()) next.lastName = 'Last name is required.'
 
     if (!email.trim()) next.email = 'Email is required.'
     else if (!isValidEmail(email)) next.email = 'Enter a valid email address.'
+    else if (!isUniversityEmail(email)) {
+      next.email = 'Registration requires a @pw.edu.pl university email.'
+    }
 
     if (!password) next.password = 'Password is required.'
-    else if (password.length < 8) next.password = 'Use at least 8 characters.'
+    else if (!meetsPasswordPolicy(password)) {
+      next.password =
+        'Use at least 8 characters with upper, lower, and a number (matches server rules).'
+    }
 
     if (!confirmPassword) next.confirmPassword = 'Confirm your password.'
     else if (confirmPassword !== password) next.confirmPassword = 'Passwords do not match.'
@@ -47,14 +71,33 @@ export default function RegisterPage() {
     return Object.keys(next).length === 0
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
-    setRegisterSuccess(false)
+    setApiError(null)
     if (!validate()) return
 
-    setPassword('')
-    setConfirmPassword('')
-    setRegisterSuccess(true)
+    setIsSubmitting(true)
+    try {
+      await register({
+        email: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        facultyId: null,
+      })
+      navigate('/login', { replace: true, state: { registered: true } })
+    } catch (err) {
+      if (err instanceof HttpError) {
+        const msgs = extractErrorMessages(err.body)
+        setApiError(msgs.length ? msgs.join(' ') : err.message || 'Registration failed.')
+      } else {
+        setApiError(
+          'Could not reach the API. Run the backend on port 5289 or set VITE_API_BASE_URL.',
+        )
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -69,45 +112,78 @@ export default function RegisterPage() {
 
         <div className="rounded-2xl border border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/60 backdrop-blur-sm px-6 py-8 sm:px-8">
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-            {registerSuccess && (
+            {apiError && (
               <div
-                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
-                role="status"
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+                role="alert"
               >
-                Registration details look valid. Connect registration API.
+                {apiError}
               </div>
             )}
 
-            <div>
-              <label
-                htmlFor={nameId}
-                className="block text-sm font-medium text-slate-700 mb-1"
-              >
-                Full name
-              </label>
-              <input
-                id={nameId}
-                name="displayName"
-                type="text"
-                autoComplete="name"
-                value={displayName}
-                onChange={(e) => {
-                  setDisplayName(e.target.value)
-                  if (errors.displayName)
-                    setErrors((o) => ({ ...o, displayName: undefined }))
-                }}
-                className={inputClass}
-                placeholder="Alex Student"
-                aria-invalid={Boolean(errors.displayName)}
-                aria-describedby={
-                  errors.displayName ? `${nameId}-err` : undefined
-                }
-              />
-              {errors.displayName && (
-                <p id={`${nameId}-err`} className="mt-1 text-sm text-red-600">
-                  {errors.displayName}
-                </p>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  htmlFor={firstNameId}
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  First name
+                </label>
+                <input
+                  id={firstNameId}
+                  name="firstName"
+                  type="text"
+                  autoComplete="given-name"
+                  value={firstName}
+                  onChange={(e) => {
+                    setFirstName(e.target.value)
+                    if (errors.firstName)
+                      setErrors((o) => ({ ...o, firstName: undefined }))
+                  }}
+                  className={inputClass}
+                  placeholder="Alex"
+                  aria-invalid={Boolean(errors.firstName)}
+                  aria-describedby={
+                    errors.firstName ? `${firstNameId}-err` : undefined
+                  }
+                />
+                {errors.firstName && (
+                  <p id={`${firstNameId}-err`} className="mt-1 text-sm text-red-600">
+                    {errors.firstName}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label
+                  htmlFor={lastNameId}
+                  className="block text-sm font-medium text-slate-700 mb-1"
+                >
+                  Last name
+                </label>
+                <input
+                  id={lastNameId}
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  value={lastName}
+                  onChange={(e) => {
+                    setLastName(e.target.value)
+                    if (errors.lastName)
+                      setErrors((o) => ({ ...o, lastName: undefined }))
+                  }}
+                  className={inputClass}
+                  placeholder="Kowalski"
+                  aria-invalid={Boolean(errors.lastName)}
+                  aria-describedby={
+                    errors.lastName ? `${lastNameId}-err` : undefined
+                  }
+                />
+                {errors.lastName && (
+                  <p id={`${lastNameId}-err`} className="mt-1 text-sm text-red-600">
+                    {errors.lastName}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div>
@@ -115,7 +191,7 @@ export default function RegisterPage() {
                 htmlFor={emailId}
                 className="block text-sm font-medium text-slate-700 mb-1"
               >
-                Email
+                University email
               </label>
               <input
                 id={emailId}
@@ -128,7 +204,7 @@ export default function RegisterPage() {
                   if (errors.email) setErrors((o) => ({ ...o, email: undefined }))
                 }}
                 className={inputClass}
-                placeholder="you@university.edu"
+                placeholder="you@pw.edu.pl"
                 aria-invalid={Boolean(errors.email)}
                 aria-describedby={errors.email ? `${emailId}-err` : undefined}
               />
@@ -137,6 +213,9 @@ export default function RegisterPage() {
                   {errors.email}
                 </p>
               )}
+              <p className="mt-1 text-xs text-slate-500">
+                The API only accepts addresses ending in @pw.edu.pl.
+              </p>
             </div>
 
             <div>
@@ -228,15 +307,7 @@ export default function RegisterPage() {
                   aria-describedby={errors.terms ? `${termsId}-err` : undefined}
                 />
                 <label htmlFor={termsId} className="text-sm text-slate-700">
-                  I agree to the{' '}
-                  <span className="text-slate-900 font-medium">
-                    Terms of Service
-                  </span>{' '}
-                  and{' '}
-                  <span className="text-slate-900 font-medium">
-                    Privacy Policy
-                  </span>
-                  . (Frontend placeholder  link real documents later.)
+                  I agree to the Terms of Service and Privacy Policy.
                 </label>
               </div>
               {errors.terms && (
@@ -248,9 +319,10 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              disabled={isSubmitting}
+              className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Create account
+              {isSubmitting ? 'Creating account…' : 'Create account'}
             </button>
 
             <p className="text-center text-sm text-slate-600">

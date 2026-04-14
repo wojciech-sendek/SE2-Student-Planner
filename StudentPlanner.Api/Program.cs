@@ -75,6 +75,21 @@ namespace StudentPlanner.Api
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
 
+            var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
+            var corsOrigins = configuredOrigins is { Length: > 0 }
+                ? configuredOrigins
+                : new[] { "http://localhost:5173", "https://localhost:5173" };
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("Frontend", policy =>
+                {
+                    policy.WithOrigins(corsOrigins)
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
+
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
 
@@ -130,6 +145,8 @@ namespace StudentPlanner.Api
             }
 
             app.UseHttpsRedirection();
+
+            app.UseCors("Frontend");
 
             app.UseAuthentication();
             app.UseAuthorization();

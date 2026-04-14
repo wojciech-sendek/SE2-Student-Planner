@@ -1,5 +1,8 @@
 import { useId, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { login } from '../api/authApi.js'
+import { HttpError, extractErrorMessages } from '../api/httpError.js'
+import { saveAuthFromResponse } from '../lib/authStorage.js'
 
 const REMEMBER_EMAIL_KEY = 'student-planner-remember-email'
 
@@ -8,6 +11,9 @@ function isValidEmail(value) {
 }
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const justRegistered = Boolean(location.state?.registered)
   const formId = useId()
   const emailId = `${formId}-email`
   const passwordId = `${formId}-password`
@@ -30,7 +36,8 @@ export default function LoginPage() {
   const [forgotSent, setForgotSent] = useState(false)
 
   const [errors, setErrors] = useState({})
-  const [loginSuccess, setLoginSuccess] = useState(false)
+  const [apiError, setApiError] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   function validateLogin() {
     const next = {}
@@ -42,16 +49,40 @@ export default function LoginPage() {
     return Object.keys(next).length === 0
   }
 
-  function handleLoginSubmit(e) {
+  async function handleLoginSubmit(e) {
     e.preventDefault()
-    setLoginSuccess(false)
+    setApiError(null)
     if (!validateLogin()) return
 
-    if (rememberMe) localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim())
-    else localStorage.removeItem(REMEMBER_EMAIL_KEY)
-
-    setPassword('')
-    setLoginSuccess(true)
+    setIsSubmitting(true)
+    try {
+      const data = await login({
+        email: email.trim(),
+        password,
+      })
+      saveAuthFromResponse(data)
+      if (rememberMe) localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim())
+      else localStorage.removeItem(REMEMBER_EMAIL_KEY)
+      setPassword('')
+      navigate('/app', { replace: true })
+    } catch (err) {
+      if (err instanceof HttpError) {
+        const msgs = extractErrorMessages(err.body)
+        if (err.status === 401) {
+          setApiError('Invalid email or password.')
+        } else if (msgs.length) {
+          setApiError(msgs.join(' '))
+        } else {
+          setApiError(err.message || 'Sign-in failed.')
+        }
+      } else {
+        setApiError(
+          'Could not reach the API. Run the backend on port 5289 or set VITE_API_BASE_URL.',
+        )
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function validateForgot() {
@@ -74,7 +105,7 @@ export default function LoginPage() {
     setForgotEmail(email.trim())
     setForgotSent(false)
     setErrors({})
-    setLoginSuccess(false)
+    setApiError(null)
   }
 
   function backToLogin() {
@@ -120,15 +151,21 @@ export default function LoginPage() {
           `}</style>
           {mode === 'login' ? (
             <form onSubmit={handleLoginSubmit} className="space-y-5" noValidate>
-              {loginSuccess && (
+              {justRegistered && (
                 <div
-                  className="rounded-lg border border-emerald-300/60 bg-gradient-to-r from-emerald-50 to-green-50 px-4 py-3 text-sm text-emerald-900 shadow-sm flex items-start gap-2"
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm"
                   role="status"
                 >
-                  <svg className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Credentials look valid. Connect auth API here to finish sign-in.</span>
+                  Account created. You can sign in now.
+                </div>
+              )}
+
+              {apiError && (
+                <div
+                  className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm"
+                  role="alert"
+                >
+                  {apiError}
                 </div>
               )}
 
@@ -153,6 +190,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value)
+                      setApiError(null)
                       if (errors.email) setErrors((o) => ({ ...o, email: undefined }))
                     }}
                     className="w-full rounded-lg border border-slate-300 bg-white pl-10 pr-3 py-3 text-slate-900 shadow-sm outline-none ring-indigo-500/0 transition-all focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 hover:border-slate-400"
@@ -201,6 +239,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value)
+                      setApiError(null)
                       if (errors.password)
                         setErrors((o) => ({ ...o, password: undefined }))
                     }}
@@ -245,9 +284,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Sign in
+                {isSubmitting ? 'Signing in…' : 'Sign in'}
               </button>
 
               <p className="text-center text-sm text-slate-600">
