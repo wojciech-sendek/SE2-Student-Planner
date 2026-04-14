@@ -32,6 +32,7 @@ function SettingsPage() {
                 setError(data.message || "Failed to delete account.");
             }
         } catch (err) {
+            console.error(err);
             setError("An error occurred. Please try again later.");
         } finally {
             setIsDeleting(false);
