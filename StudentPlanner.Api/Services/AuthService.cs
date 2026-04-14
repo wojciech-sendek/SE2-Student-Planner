@@ -124,6 +124,20 @@ namespace StudentPlanner.Api.Services
             };
         }
 
+        public async Task<bool> DeleteAccountAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user is null)
+            {
+                return false;
+            }
+
+            var result = await _userManager.DeleteAsync(user);
+
+            return result.Succeeded;
+        }
+
         private static bool IsAllowedUniversityEmail(string email)
         {
             var atIndex = email.LastIndexOf('@');

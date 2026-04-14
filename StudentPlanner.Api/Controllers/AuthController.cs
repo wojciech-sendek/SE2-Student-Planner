@@ -94,5 +94,32 @@ namespace StudentPlanner.Api.Controllers
 
             return Ok(currentUser);
         }
+
+        /// <summary>
+        /// Deletes the currently authenticated user's account.
+        /// </summary>
+        [HttpDelete("delete-account")]
+        [Authorize]
+        public async Task<IActionResult> DeleteAccount()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var succeeded = await _authService.DeleteAccountAsync(userId);
+
+            if (!succeeded)
+            {
+                return BadRequest(new
+                {
+                    Message = "Failed to delete account."
+                });
+            }
+
+            return NoContent();
+        }
     }
 }

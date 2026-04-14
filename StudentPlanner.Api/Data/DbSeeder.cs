@@ -15,7 +15,10 @@ namespace StudentPlanner.Api.Data
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-            await dbContext.Database.MigrateAsync();
+            if (dbContext.Database.IsRelational())
+            {
+                await dbContext.Database.MigrateAsync();
+            }
 
             var roles = new[] { "User", "Manager", "Admin" };
 
