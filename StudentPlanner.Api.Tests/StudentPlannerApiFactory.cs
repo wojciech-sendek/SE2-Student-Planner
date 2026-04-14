@@ -10,6 +10,8 @@ namespace StudentPlanner.Api.Tests;
 
 public class StudentPlannerApiFactory : WebApplicationFactory<Program>
 {
+    private readonly string _dbName = Guid.NewGuid().ToString();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureServices(services =>
@@ -24,7 +26,7 @@ public class StudentPlannerApiFactory : WebApplicationFactory<Program>
 
             services.AddDbContext<ApplicationDbContext>(options =>
             {
-                options.UseInMemoryDatabase("TestDatabase");
+                options.UseInMemoryDatabase(_dbName);
             });
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>

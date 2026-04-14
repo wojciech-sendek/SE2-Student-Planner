@@ -174,12 +174,7 @@ public class PersonalEventsIntegrationTests : IClassFixture<StudentPlannerApiFac
 
     private void Authenticate(string userId)
     {
-        // Simple mock authentication for testing
-        // In a real scenario, we might need to generate a real JWT or use a TestAuthHandler
-        // For this task, I'll assume the API uses standard [Authorize] which we can bypass in tests if needed
-        // or we can implement a custom TestAuthHandler in the factory.
-        // Let's use a simpler approach for now: add a header that a custom middleware/handler can pick up.
-        
+		// Simple mock auth for testing
         _client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Test", userId);
     }
 }
