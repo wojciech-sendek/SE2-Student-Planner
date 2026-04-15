@@ -79,8 +79,18 @@ function isSameDay(a, b) {
 
 function getEventsForDay(events, date) {
   return events.filter(e => {
-    const start = e.startTime ? new Date(e.startTime) : null
-    return start && isSameDay(start, date)
+    if (!e.startTime || !e.endTime) return false
+
+    const start = new Date(e.startTime)
+    const end = new Date(e.endTime)
+
+    const dayStart = new Date(date)
+    dayStart.setHours(0, 0, 0, 0)
+
+    const dayEnd = new Date(date)
+    dayEnd.setHours(23, 59, 59, 999)
+
+    return start <= dayEnd && end >= dayStart
   })
 }
 
@@ -107,57 +117,69 @@ export default function Calendar() {
   const [globalError, setGlobalError] = useState(null)
   const [modal, setModal] = useState(null)
 
-  const loadEvents = useCallback(async () => {
-    setLoading(true)
-    try {
-      const data = await fetchAllEvents()
-      const list = Array.isArray(data) ? data : (data?.events ?? data?.Events ?? [])
-      setEvents(list.map(normalizeEvent))
-    } catch (e) {
-      if (e instanceof HttpError && e.status === 401) {
-        clearAuth()
-        window.location.assign('/login')
-      }
-    } finally {
-      setLoading(false)
+const loadEvents = useCallback(async () => {
+  setLoading(true)
+  try {
+    const data = await fetchAllEvents()
+    const list = Array.isArray(data) ? data : (data?.events ?? data?.Events ?? [])
+    setEvents(
+      list.map(event => ({
+        ...normalizeEvent(event),
+        isPersonal: true,
+        eventType: 'Personal',
+      }))
+    )
+  } catch (e) {
+    if (e instanceof HttpError && e.status === 401) {
+      clearAuth()
+      window.location.assign('/login')
     }
-  }, [])
+  } finally {
+    setLoading(false)
+  }
+}, [])
 
   useEffect(() => {
     loadEvents()
   }, [loadEvents])
 
-  async function handleCreate(formData) {
-    try {
-      const res = await createPersonalEvent(formData)
-      setModal(null)
-      const created = res ? normalizeEvent(res) : null
-      if (created?.id) {
-        setEvents(prev => [...prev, created])
-      } else {
-        await loadEvents()
-      }
-    } catch {
-      setModal(null)
-      setGlobalError('Could not create the event')
-    }
-  }
+async function handleCreate(formData) {
+  try {
+    const res = await createPersonalEvent(formData)
+    setModal(null)
+    const created = res
+      ? { ...normalizeEvent(res), isPersonal: true, eventType: 'Personal' }
+      : null
 
-  async function handleUpdate(id, formData) {
-    try {
-      const res = await updatePersonalEvent(id, formData)
-      setModal(null)
-      const updated = res ? normalizeEvent(res) : null
-      if (updated?.id) {
-        setEvents(prev => prev.map(e => (e.id === id ? updated : e)))
-      } else {
-        await loadEvents()
-      }
-    } catch {
-      setModal(null)
-      setGlobalError('Could not update the event')
+    if (created?.id) {
+      setEvents(prev => [...prev, created])
+    } else {
+      await loadEvents()
     }
+  } catch {
+    setModal(null)
+    setGlobalError('Could not create the event')
   }
+}
+
+async function handleUpdate(id, formData) {
+  try {
+    const res = await updatePersonalEvent(id, formData)
+    setModal(null)
+    const updated = res
+      ? { ...normalizeEvent(res), isPersonal: true, eventType: 'Personal' }
+      : null
+
+    if (updated?.id) {
+      setEvents(prev => prev.map(e => (e.id === id ? updated : e)))
+    } else {
+      await loadEvents()
+    }
+  } catch {
+    setModal(null)
+    setGlobalError('Could not update the event')
+  }
+}
 
   async function handleDelete(id) {
     try {

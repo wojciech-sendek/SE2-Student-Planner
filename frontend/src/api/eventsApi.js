@@ -18,27 +18,27 @@ async function authedFetch(path, options = {}) {
 }
 
 export function fetchAllEvents() {
-  return authedFetch('/events')
+  return authedFetch('/api/personalevents')
 }
 
 export function createPersonalEvent(details) {
-  return authedFetch('/api/events/personal-events', {
+  return authedFetch('/api/personalevents', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ details }),
+    body: JSON.stringify(details),
   })
 }
 
 export function updatePersonalEvent(id, details) {
-  return authedFetch(`/api/events/personal-events/${id}`, {
+  return authedFetch(`/api/personalevents/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ details }),
+    body: JSON.stringify(details),
   })
 }
 
 export async function deletePersonalEvent(id) {
-  const res = await fetch(apiUrl(`/api/events/personal-events/${id}`), {
+  const res = await fetch(apiUrl(`/api/personalevents/${id}`), {
     method: 'DELETE',
     headers: {
       Accept: 'application/json',
