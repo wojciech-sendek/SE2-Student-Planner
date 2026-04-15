@@ -17,7 +17,21 @@ namespace StudentPlanner.Api.Data
 
             if (dbContext.Database.IsRelational())
             {
-                await dbContext.Database.MigrateAsync();
+                var retryCount = 0;
+                while (retryCount < 5)
+                {
+                    try
+                    {
+                        await dbContext.Database.MigrateAsync();
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        retryCount++;
+                        if (retryCount >= 5) throw;
+                        await Task.Delay(5000);
+                    }
+                }
             }
 
             var roles = new[] { "User", "Manager", "Admin" };

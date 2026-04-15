@@ -1,0 +1,51 @@
+﻿services:
+  database:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: student-planner-db
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrongPassword!123
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrongPassword!123' -Q 'SELECT 1' -C"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - student-planner-net
+
+  api:
+    build:
+      context: .
+      dockerfile: StudentPlanner.Api/Dockerfile
+    container_name: student-planner-api
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Server=database;Database=StudentPlannerDb;User Id=sa;Password=YourStrongPassword!123;TrustServerCertificate=True;
+      - Cors__Origins=["http://localhost:5173", "http://localhost"]
+    ports:
+      - "5289:8080"
+    networks:
+      - student-planner-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: student-planner-web
+    ports:
+      - "5173:80"
+    networks:
+      - student-planner-net
+    depends_on:
+      - api
+
+networks:
+  student-planner-net:
+    driver: bridge

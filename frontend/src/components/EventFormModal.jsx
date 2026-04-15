@@ -36,13 +36,24 @@ export default function EventFormModal({ title, initialValues, onSave, onCancel 
     if (!form.startTime) { setValidationError('Start time is required.'); return }
     if (!form.endTime) { setValidationError('End time is required.'); return }
 
+    const startDate = new Date(form.startTime)
+    const endDate = new Date(form.endTime)
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+      setValidationError('Please provide valid start and end times.')
+      return
+    }
+    if (endDate <= startDate) {
+      setValidationError('End time must be after start time.')
+      return
+    }
+
     setSaving(true)
     setValidationError(null)
     try {
       await onSave({
         title: form.title.trim(),
-        startTime: new Date(form.startTime).toISOString(),
-        endTime: new Date(form.endTime).toISOString(),
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
         location: form.location.trim(),
         description: form.description.trim(),
       })

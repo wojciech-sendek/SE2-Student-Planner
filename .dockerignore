@@ -1,0 +1,13 @@
+﻿**/.dockerignore
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/bin
+**/obj
+**/publish
+**/*.user
+**/*.lock.json
+**/node_modules
+**/dist
+**/*.log*
