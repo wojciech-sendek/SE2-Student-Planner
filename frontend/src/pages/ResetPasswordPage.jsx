@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Password Reset Successful</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Password reset successful</h2>
             <p className="text-slate-600 mb-8">
               Your password has been updated. You can now sign in with your new password.
             </p>
@@ -129,7 +129,7 @@ export default function ResetPasswordPage() {
 
             <div>
               <label htmlFor={tokenId} className="block text-sm font-semibold text-slate-700 mb-2">
-                Reset Token
+                6-digit Token
               </label>
               <input
                 id={tokenId}
@@ -144,7 +144,7 @@ export default function ResetPasswordPage() {
 
             <div>
               <label htmlFor={passwordId} className="block text-sm font-semibold text-slate-700 mb-2">
-                New Password
+                New password
               </label>
               <div className="relative">
                 <input
@@ -168,7 +168,7 @@ export default function ResetPasswordPage() {
 
             <div>
               <label htmlFor={confirmPasswordId} className="block text-sm font-semibold text-slate-700 mb-2">
-                Confirm New Password
+                Confirm new password
               </label>
               <input
                 id={confirmPasswordId}
