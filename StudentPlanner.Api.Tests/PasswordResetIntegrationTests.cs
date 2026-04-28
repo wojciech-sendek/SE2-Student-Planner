@@ -64,6 +64,8 @@ public class PasswordResetIntegrationTests : IClassFixture<StudentPlannerApiFact
         forgotResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         
         capturedToken.Should().NotBeNull();
+        capturedToken.Should().HaveLength(6);
+        int.TryParse(capturedToken, out _).Should().BeTrue();
 
         // Act - Reset Password
         var resetRequest = new ResetPasswordRequestDto

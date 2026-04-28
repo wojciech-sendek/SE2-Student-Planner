@@ -36,10 +36,11 @@ namespace StudentPlanner.Api
 
                     options.User.RequireUniqueEmail = true;
 
-                    options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultProvider;
+                    options.Tokens.PasswordResetTokenProvider = "Numeric";
                 })
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+                .AddDefaultTokenProviders()
+                .AddTokenProvider<NumericTokenProvider<ApplicationUser>>("Numeric");
 
             builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
             {

@@ -29,6 +29,7 @@ export default function ResetPasswordPage() {
     const next = {}
     if (!email.trim()) next.email = 'Email is required.'
     if (!token.trim()) next.token = 'Reset token is required.'
+    else if (token.trim().length !== 6) next.token = 'Token must be 6 digits.'
     if (!newPassword) next.newPassword = 'New password is required.'
     else if (newPassword.length < 8) next.newPassword = 'Use at least 8 characters.'
     
