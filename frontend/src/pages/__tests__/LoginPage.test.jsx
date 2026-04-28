@@ -80,12 +80,8 @@ describe('LoginPage', () => {
 
   it('shows error if forgotPassword API fails', async () => {
     const errorBody = { errors: { '': ['API Error'] } }
-    const httpError = { 
-      body: errorBody,
-      status: 400 
-    }
     // We need to mock HttpError class or just use the structure that extractErrorMessages expects
-    authApi.forgotPassword.mockRejectedValueOnce(new (class HttpError extends Error {
+    authApi.forgotPassword.mockRejectedValueOnce(new (class extends Error {
       constructor() {
         super('Failed')
         this.body = errorBody
