@@ -12,6 +12,7 @@ namespace StudentPlanner.Api.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IJwtTokenService _jwtTokenService;
         private readonly ApplicationDbContext _dbContext;
+        private readonly IUsosMockService _usosMockService;
 
         //TODO: move to config
         private static readonly string[] AllowedEmailDomains =
@@ -22,11 +23,13 @@ namespace StudentPlanner.Api.Services
         public AuthService(
             UserManager<ApplicationUser> userManager,
             IJwtTokenService jwtTokenService,
-            ApplicationDbContext dbContext)
+            ApplicationDbContext dbContext,
+            IUsosMockService usosMockService)
         {
             _userManager = userManager;
             _jwtTokenService = jwtTokenService;
             _dbContext = dbContext;
+            _usosMockService = usosMockService;
         }
 
         public async Task<(bool Succeeded, IEnumerable<string> Errors)> RegisterAsync(RegisterRequestDto dto)
@@ -102,6 +105,7 @@ namespace StudentPlanner.Api.Services
                 return null;
             }
 
+            await _usosMockService.EnsureConnectedAndSyncedAsync(user.Id);
             return await _jwtTokenService.CreateTokenAsync(user);
         }
 

@@ -9,6 +9,8 @@ namespace StudentPlanner.Api.Data
     {
         public DbSet<Faculty> Faculties => Set<Faculty>();
         public DbSet<PersonalEvent> PersonalEvents => Set<PersonalEvent>();
+        public DbSet<UsosEvent> UsosEvents => Set<UsosEvent>();
+        public DbSet<UsosToken> UsosTokens => Set<UsosToken>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -53,6 +55,54 @@ namespace StudentPlanner.Api.Data
                 entity.HasOne(e => e.User)
                     .WithMany()
                     .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+
+            builder.Entity<UsosEvent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.Title)
+                    .IsRequired()
+                    .HasMaxLength(200);
+
+                entity.Property(e => e.Location)
+                    .HasMaxLength(300);
+
+                entity.Property(e => e.CourseId)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.LecturerName)
+                    .HasMaxLength(200);
+
+                entity.Property(e => e.Room)
+                    .HasMaxLength(100);
+
+                entity.HasOne(e => e.User)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<UsosToken>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+
+                entity.Property(t => t.AccessToken)
+                    .IsRequired()
+                    .HasMaxLength(500);
+
+                entity.Property(t => t.AccessTokenSecret)
+                    .IsRequired()
+                    .HasMaxLength(500);
+
+                entity.HasIndex(t => t.UserId)
+                    .IsUnique();
+
+                entity.HasOne(t => t.User)
+                    .WithMany()
+                    .HasForeignKey(t => t.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

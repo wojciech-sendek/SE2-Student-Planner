@@ -74,6 +74,7 @@ namespace StudentPlanner.Api
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
+            builder.Services.AddScoped<IUsosMockService, UsosMockService>();
 
             var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
             var corsOrigins = configuredOrigins is { Length: > 0 }
