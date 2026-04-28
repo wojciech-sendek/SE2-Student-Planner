@@ -17,6 +17,62 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 const MAX_VISIBLE = 3
+const MOCK_USOS_ENABLED = true
+
+function toIsoAtLocalTime(baseDate, hour, minute, durationMinutes) {
+  const start = new Date(
+    baseDate.getFullYear(),
+    baseDate.getMonth(),
+    baseDate.getDate(),
+    hour,
+    minute,
+    0,
+    0
+  )
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
+  return { startTime: start.toISOString(), endTime: end.toISOString() }
+}
+
+function getMockUsosEvents(anchorDate = new Date()) {
+  const year = anchorDate.getFullYear()
+  const month = anchorDate.getMonth()
+  const base = new Date(year, month, anchorDate.getDate())
+  const dow = base.getDay()
+  const mondayOffset = dow === 0 ? -6 : 1 - dow
+  const monday = new Date(year, month, base.getDate() + mondayOffset)
+
+  const schedule = [
+    { dayOffset: 0, title: 'Algorithms Lecture', hour: 8, minute: 15, duration: 90, location: 'B-201' },
+    { dayOffset: 1, title: 'Software Engineering Lab', hour: 10, minute: 0, duration: 120, location: 'C-105' },
+    { dayOffset: 2, title: 'Databases Lecture', hour: 12, minute: 15, duration: 90, location: 'A-3' },
+    { dayOffset: 3, title: 'Operating Systems', hour: 9, minute: 45, duration: 90, location: 'D-12' },
+    { dayOffset: 4, title: 'Computer Networks', hour: 14, minute: 0, duration: 90, location: 'B-102' },
+  ]
+
+  const weeksToGenerate = 3
+  const events = []
+  for (let week = 0; week < weeksToGenerate; week++) {
+    for (const item of schedule) {
+      const classDate = new Date(
+        monday.getFullYear(),
+        monday.getMonth(),
+        monday.getDate() + week * 7 + item.dayOffset
+      )
+      const { startTime, endTime } = toIsoAtLocalTime(classDate, item.hour, item.minute, item.duration)
+      events.push({
+        id: `mock-usos-${week}-${item.dayOffset}-${item.title.replace(/\s+/g, '-').toLowerCase()}`,
+        title: item.title,
+        startTime,
+        endTime,
+        location: item.location,
+        description: 'Mock USOS class event (frontend fallback).',
+        eventType: 'UsosEvent',
+        isPersonal: false,
+      })
+    }
+  }
+  return events
+}
 
 function isPersonalEvent(event) {
   if (!event) return false
@@ -78,10 +134,12 @@ function isSameDay(a, b) {
 }
 
 function getEventsForDay(events, date) {
-  return events.filter(e => {
-    const start = e.startTime ? new Date(e.startTime) : null
-    return start && isSameDay(start, date)
-  })
+  return events
+    .filter(e => {
+      const start = e.startTime ? new Date(e.startTime) : null
+      return start && isSameDay(start, date)
+    })
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 }
 
 function eventChipClass(event) {
@@ -118,7 +176,9 @@ export default function Calendar() {
     try {
       const data = await fetchAllEvents()
       const list = Array.isArray(data) ? data : (data?.events ?? data?.Events ?? [])
-      setEvents(list.map(normalizeEvent))
+      const normalizedEvents = list.map(normalizeEvent)
+      const mockedUsosEvents = MOCK_USOS_ENABLED ? getMockUsosEvents(today).map(normalizeEvent) : []
+      setEvents([...normalizedEvents, ...mockedUsosEvents])
       setGlobalError(null)
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
@@ -264,13 +324,18 @@ export default function Calendar() {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
-          Classes
+          USOS Classes
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-slate-400" />
           Other
         </span>
       </div>
+      {MOCK_USOS_ENABLED && (
+        <p className="mb-3 text-xs text-amber-700">
+          Showing mock USOS classes until gateway integration is ready.
+        </p>
+      )}
 
       {/* Weekday labels */}
       <div className="grid grid-cols-7">

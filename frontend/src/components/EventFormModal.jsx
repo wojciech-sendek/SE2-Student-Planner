@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 function toDatetimeLocal(isoStr) {
   if (!isoStr) return ''
@@ -14,30 +14,93 @@ function toDatetimeLocal(isoStr) {
   }
 }
 
+function splitDatetimeLocal(datetimeLocal) {
+  if (!datetimeLocal) return { date: '', time: '' }
+  const [datePart = '', timePart = ''] = datetimeLocal.split('T')
+  return { date: datePart, time: timePart.slice(0, 5) }
+}
+
+function combineDateTime(date, time) {
+  if (!date || !time) return ''
+  return `${date}T${time}`
+}
+
+function buildTimeOptions() {
+  const options = []
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      options.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`)
+    }
+  }
+  return options
+}
+
+const TIME_OPTIONS = buildTimeOptions()
+
 export default function EventFormModal({ title, initialValues, onSave, onCancel }) {
+  const initialStart = splitDatetimeLocal(toDatetimeLocal(initialValues?.startTime))
+  const initialEnd = splitDatetimeLocal(toDatetimeLocal(initialValues?.endTime))
+
   const [form, setForm] = useState({
     title: initialValues?.title ?? '',
-    startTime: toDatetimeLocal(initialValues?.startTime),
-    endTime: toDatetimeLocal(initialValues?.endTime),
+    startDate: initialStart.date,
+    startTime: initialStart.time,
+    endDate: initialEnd.date,
+    endTime: initialEnd.time,
     location: initialValues?.location ?? '',
     description: initialValues?.description ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [validationError, setValidationError] = useState(null)
+  const [openTimeMenu, setOpenTimeMenu] = useState(null)
+  const startTimeInputRef = useRef(null)
+  const endTimeInputRef = useRef(null)
 
   function handleChange(e) {
     const { name, value } = e.target
     setForm(prev => ({ ...prev, [name]: value }))
   }
 
+  function openNativeTimePicker(input) {
+    if (!input) return false
+    input.focus()
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker()
+        return true
+      } catch {
+        // Ignore and fall back to custom menu.
+      }
+    }
+    return false
+  }
+
+  function handleDateChange(e, nextPickerRef, menuKey) {
+    handleChange(e)
+    setOpenTimeMenu(menuKey)
+    openNativeTimePicker(nextPickerRef.current)
+  }
+
+  function openTimePicker(ref, menuKey) {
+    setOpenTimeMenu(prev => (prev === menuKey ? null : menuKey))
+    openNativeTimePicker(ref.current)
+  }
+
+  function setTimeValue(name, value) {
+    setForm(prev => ({ ...prev, [name]: value }))
+    setOpenTimeMenu(null)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
+    const startDateTime = combineDateTime(form.startDate, form.startTime)
+    const endDateTime = combineDateTime(form.endDate, form.endTime)
     if (!form.title.trim()) { setValidationError('Title is required.'); return }
-    if (!form.startTime) { setValidationError('Start time is required.'); return }
-    if (!form.endTime) { setValidationError('End time is required.'); return }
+    if (!startDateTime) { setValidationError('Start date and time are required.'); return }
+    if (!endDateTime) { setValidationError('End date and time are required.'); return }
 
-    const startDate = new Date(form.startTime)
-    const endDate = new Date(form.endTime)
+    const startDate = new Date(startDateTime)
+    const endDate = new Date(endDateTime)
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
       setValidationError('Please provide valid start and end times.')
       return
@@ -95,25 +158,99 @@ export default function EventFormModal({ title, initialValues, onSave, onCancel 
               <label className="mb-1 block text-sm font-medium text-slate-700">
                 Start <span className="text-red-500">*</span>
               </label>
-              <input
-                type="datetime-local"
-                name="startTime"
-                value={form.startTime}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+              <div className="space-y-2">
+                <input
+                  type="date"
+                  name="startDate"
+                  value={form.startDate}
+                  onChange={e => handleDateChange(e, startTimeInputRef, 'start')}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <div className="relative">
+                  <input
+                    ref={startTimeInputRef}
+                    type="time"
+                    name="startTime"
+                    value={form.startTime}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openTimePicker(startTimeInputRef, 'start')}
+                    aria-label="Open start time picker"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    🕒
+                  </button>
+                  {openTimeMenu === 'start' && (
+                    <div className="absolute left-0 top-full z-30 mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                      {TIME_OPTIONS.map(option => (
+                        <button
+                          key={option}
+                          type="button"
+                          onMouseDown={e => {
+                            e.preventDefault()
+                            setTimeValue('startTime', option)
+                          }}
+                          className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
                 End <span className="text-red-500">*</span>
               </label>
-              <input
-                type="datetime-local"
-                name="endTime"
-                value={form.endTime}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+              <div className="space-y-2">
+                <input
+                  type="date"
+                  name="endDate"
+                  value={form.endDate}
+                  onChange={e => handleDateChange(e, endTimeInputRef, 'end')}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <div className="relative">
+                  <input
+                    ref={endTimeInputRef}
+                    type="time"
+                    name="endTime"
+                    value={form.endTime}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openTimePicker(endTimeInputRef, 'end')}
+                    aria-label="Open end time picker"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                  >
+                    🕒
+                  </button>
+                  {openTimeMenu === 'end' && (
+                    <div className="absolute left-0 top-full z-30 mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                      {TIME_OPTIONS.map(option => (
+                        <button
+                          key={option}
+                          type="button"
+                          onMouseDown={e => {
+                            e.preventDefault()
+                            setTimeValue('endTime', option)
+                          }}
+                          className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
