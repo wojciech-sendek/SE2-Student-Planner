@@ -5,7 +5,7 @@ import {
   updatePersonalEvent,
   deletePersonalEvent,
 } from '../api/eventsApi.js'
-import { HttpError } from '../api/httpError.js'
+import { extractErrorMessages, HttpError } from '../api/httpError.js'
 import { clearAuth } from '../lib/authStorage.js'
 import EventFormModal from './EventFormModal.jsx'
 import EventDetailsModal from './EventDetailsModal.jsx'
@@ -97,6 +97,12 @@ function formatTime(isoStr) {
   return new Date(isoStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
+function getRequestErrorMessage(error, fallbackMessage) {
+  if (!(error instanceof HttpError)) return fallbackMessage
+  const [message] = extractErrorMessages(error.body)
+  return message ?? fallbackMessage
+}
+
 export default function Calendar() {
   const today = new Date()
   const [currentMonth, setCurrentMonth] = useState(
@@ -113,11 +119,14 @@ export default function Calendar() {
       const data = await fetchAllEvents()
       const list = Array.isArray(data) ? data : (data?.events ?? data?.Events ?? [])
       setEvents(list.map(normalizeEvent))
+      setGlobalError(null)
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
         window.location.assign('/login')
+        return
       }
+      setGlobalError(getRequestErrorMessage(e, 'Could not load events'))
     } finally {
       setLoading(false)
     }
@@ -137,9 +146,14 @@ export default function Calendar() {
       } else {
         await loadEvents()
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 401) {
+        clearAuth()
+        window.location.assign('/login')
+        return
+      }
       setModal(null)
-      setGlobalError('Could not create the event')
+      setGlobalError(getRequestErrorMessage(e, 'Could not create the event'))
     }
   }
 
@@ -153,9 +167,14 @@ export default function Calendar() {
       } else {
         await loadEvents()
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 401) {
+        clearAuth()
+        window.location.assign('/login')
+        return
+      }
       setModal(null)
-      setGlobalError('Could not update the event')
+      setGlobalError(getRequestErrorMessage(e, 'Could not update the event'))
     }
   }
 
@@ -164,9 +183,14 @@ export default function Calendar() {
       await deletePersonalEvent(id)
       setModal(null)
       setEvents(prev => prev.filter(e => e.id !== id))
-    } catch {
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 401) {
+        clearAuth()
+        window.location.assign('/login')
+        return
+      }
       setModal(null)
-      setGlobalError('Deletion Failed')
+      setGlobalError(getRequestErrorMessage(e, 'Could not delete the event'))
     }
   }
 
