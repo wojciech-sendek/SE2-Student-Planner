@@ -1,10 +1,9 @@
 ﻿import { useId, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { resetPassword } from '../api/authApi.js'
 import { HttpError, extractErrorMessages } from '../api/httpError.js'
 
 export default function ResetPasswordPage() {
-  const navigate = useNavigate()
   const location = useLocation()
   const queryParams = new URLSearchParams(location.search)
   const initialEmail = queryParams.get('email') || ''
