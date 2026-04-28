@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import ResetPasswordPage from '../ResetPasswordPage'
 import * as authApi from '../../api/authApi'
+import { HttpError } from '../../api/httpError.js'
 
 // Mock the API calls
 vi.mock('../../api/authApi', () => ({
@@ -91,5 +92,26 @@ describe('ResetPasswordPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Reset password/i }))
 
     expect(await screen.findByText(/Passwords do not match\./i)).toBeInTheDocument()
+  })
+
+  it('shows error if resetPassword API fails', async () => {
+    const errorBody = { message: 'Invalid or expired token' }
+    authApi.resetPassword.mockRejectedValueOnce(new HttpError(400, errorBody))
+
+    render(
+      <MemoryRouter initialEntries={['/reset-password?email=test@example.com']}>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    fireEvent.change(screen.getByLabelText(/6-digit token/i), { target: { value: '111111' } })
+    fireEvent.change(screen.getByLabelText(/^New password$/i), { target: { value: 'newpassword123' } })
+    fireEvent.change(screen.getByLabelText(/Confirm new password/i), { target: { value: 'newpassword123' } })
+    
+    fireEvent.click(screen.getByRole('button', { name: /Reset password/i }))
+
+    expect(await screen.findByText(/Invalid or expired token/i)).toBeInTheDocument()
   })
 })

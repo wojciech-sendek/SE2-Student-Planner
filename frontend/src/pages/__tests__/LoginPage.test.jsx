@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import LoginPage from '../LoginPage'
 import * as authApi from '../../api/authApi'
+import { HttpError } from '../../api/httpError.js'
 
 // Mock the API calls
 vi.mock('../../api/authApi', () => ({
@@ -81,14 +82,7 @@ describe('LoginPage', () => {
 
   it('shows error if forgotPassword API fails', async () => {
     const errorBody = { errors: { '': ['API Error'] } }
-    // We need to mock HttpError class or just use the structure that extractErrorMessages expects
-    authApi.forgotPassword.mockRejectedValueOnce(new (class extends Error {
-      constructor() {
-        super('Failed')
-        this.body = errorBody
-        this.status = 400
-      }
-    })())
+    authApi.forgotPassword.mockRejectedValueOnce(new HttpError(400, errorBody))
 
     render(
       <MemoryRouter>
