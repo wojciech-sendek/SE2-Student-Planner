@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { login } from '../api/authApi.js'
+import { login, forgotPassword } from '../api/authApi.js'
 import { HttpError, extractErrorMessages } from '../api/httpError.js'
 import { saveAuthFromResponse } from '../lib/authStorage.js'
 
@@ -93,11 +93,26 @@ export default function LoginPage() {
     return Object.keys(next).length === 0
   }
 
-  function handleForgotSubmit(e) {
+  async function handleForgotSubmit(e) {
     e.preventDefault()
+    setApiError(null)
     setForgotSent(false)
     if (!validateForgot()) return
-    setForgotSent(true)
+
+    setIsSubmitting(true)
+    try {
+      await forgotPassword(forgotEmail.trim())
+      setForgotSent(true)
+    } catch (err) {
+      if (err instanceof HttpError) {
+        const msgs = extractErrorMessages(err.body)
+        setApiError(msgs.join(' ') || 'Failed to send reset instructions.')
+      } else {
+        setApiError('Could not reach the API.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function openForgot() {
@@ -327,17 +342,32 @@ export default function LoginPage() {
                       <p>
                         If an account exists for{' '}
                         <span className="font-semibold">{forgotEmail.trim()}</span>, you
-                        will receive reset instructions. This is a frontend-only preview;
-                        no email is sent until the backend is connected.
+                        will receive a reset token.
+                      </p>
+                      <p className="mt-2">
+                        <Link
+                          to={`/reset-password?email=${encodeURIComponent(forgotEmail.trim())}`}
+                          className="font-semibold text-emerald-700 hover:underline"
+                        >
+                          Continue to password reset →
+                        </Link>
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <form onSubmit={handleForgotSubmit} className="space-y-5" noValidate>
+                  {apiError && (
+                    <div
+                      className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm mb-4"
+                      role="alert"
+                    >
+                      {apiError}
+                    </div>
+                  )}
+
                   <p className="text-sm text-slate-600 leading-relaxed">
-                    Enter the email for your account. We will send reset
-                    instructions when the server is ready.
+                    Enter the email for your account. We will send you a password reset token.
                   </p>
                   <div>
                     <label
@@ -385,9 +415,10 @@ export default function LoginPage() {
                   </div>
                   <button
                     type="submit"
-                    className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.98]"
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:shadow-indigo-500/40 hover:from-indigo-500 hover:to-purple-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    Send reset instructions
+                    {isSubmitting ? 'Sending…' : 'Send reset token'}
                   </button>
                 </form>
               )}

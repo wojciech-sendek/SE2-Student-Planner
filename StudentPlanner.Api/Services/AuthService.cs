@@ -12,6 +12,7 @@ namespace StudentPlanner.Api.Services
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IJwtTokenService _jwtTokenService;
         private readonly ApplicationDbContext _dbContext;
+        private readonly IEmailService _emailService;
 
         //TODO: move to config
         private static readonly string[] AllowedEmailDomains =
@@ -22,11 +23,13 @@ namespace StudentPlanner.Api.Services
         public AuthService(
             UserManager<ApplicationUser> userManager,
             IJwtTokenService jwtTokenService,
-            ApplicationDbContext dbContext)
+            ApplicationDbContext dbContext,
+            IEmailService emailService)
         {
             _userManager = userManager;
             _jwtTokenService = jwtTokenService;
             _dbContext = dbContext;
+            _emailService = emailService;
         }
 
         public async Task<(bool Succeeded, IEnumerable<string> Errors)> RegisterAsync(RegisterRequestDto dto)
@@ -136,6 +139,42 @@ namespace StudentPlanner.Api.Services
             var result = await _userManager.DeleteAsync(user);
 
             return result.Succeeded;
+        }
+
+        public async Task ForgotPasswordAsync(ForgotPasswordRequestDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+            {
+                // We don't want to reveal that the user does not exist
+                return;
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            var subject = "Student Planner - Password Reset";
+            var body = $"Your password reset token is: <b>{token}</b><br/>" +
+                       "If you did not request a password reset, please ignore this email.";
+
+            await _emailService.SendEmailAsync(user.Email!, subject, body);
+        }
+
+        public async Task<(bool Succeeded, IEnumerable<string> Errors)> ResetPasswordAsync(ResetPasswordRequestDto dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+            {
+                return (false, new[] { "Invalid request." });
+            }
+
+            var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                return (false, result.Errors.Select(e => e.Description));
+            }
+
+            return (true, Enumerable.Empty<string>());
         }
 
         private static bool IsAllowedUniversityEmail(string email)
