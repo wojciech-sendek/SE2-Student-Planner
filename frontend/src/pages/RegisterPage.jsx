@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import React, { useId, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { register } from '../api/authApi.js'
 import { HttpError, extractErrorMessages } from '../api/httpError.js'

@@ -1,3 +1,4 @@
+import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import RootRedirect from './components/RootRedirect.jsx'

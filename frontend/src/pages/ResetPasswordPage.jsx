@@ -1,4 +1,4 @@
-﻿import { useId, useState } from 'react'
+﻿import React, { useId, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { resetPassword } from '../api/authApi.js'
 import { HttpError, extractErrorMessages } from '../api/httpError.js'
