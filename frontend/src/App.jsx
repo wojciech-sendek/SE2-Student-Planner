@@ -1,9 +1,11 @@
+import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import RootRedirect from './components/RootRedirect.jsx'
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 
 function App() {
@@ -12,6 +14,7 @@ function App() {
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/app"
         element={

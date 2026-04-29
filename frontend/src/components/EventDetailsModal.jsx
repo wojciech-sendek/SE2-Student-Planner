@@ -1,3 +1,5 @@
+import React from 'react'
+
 function formatDateTime(isoStr) {
   if (!isoStr) return '—'
   return new Date(isoStr).toLocaleString([], {

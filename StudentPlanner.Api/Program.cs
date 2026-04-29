@@ -35,9 +35,17 @@ namespace StudentPlanner.Api
                     options.Password.RequireNonAlphanumeric = false;
 
                     options.User.RequireUniqueEmail = true;
+
+                    options.Tokens.PasswordResetTokenProvider = "Numeric";
                 })
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+                .AddDefaultTokenProviders()
+                .AddTokenProvider<NumericTokenProvider<ApplicationUser>>("Numeric");
+
+            builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+            {
+                options.TokenLifespan = TimeSpan.FromHours(2);
+            });
 
             var jwtOptions = builder.Configuration
                 .GetSection(JwtOptions.SectionName)
@@ -71,7 +79,11 @@ namespace StudentPlanner.Api
 
             builder.Services.AddAuthorization();
 
+            builder.Services.Configure<SmtpOptions>(
+                builder.Configuration.GetSection(SmtpOptions.SectionName));
+
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+            builder.Services.AddScoped<IEmailService, SmtpEmailService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
             builder.Services.AddHttpClient<IUsosService, UsosService>();
