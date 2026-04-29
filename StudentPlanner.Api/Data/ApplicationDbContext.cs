@@ -9,6 +9,7 @@ namespace StudentPlanner.Api.Data
     {
         public DbSet<Faculty> Faculties => Set<Faculty>();
         public DbSet<PersonalEvent> PersonalEvents => Set<PersonalEvent>();
+        public DbSet<UsosEvent> UsosEvents => Set<UsosEvent>();
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -35,9 +36,30 @@ namespace StudentPlanner.Api.Data
                     .IsUnique();
             });
 
-            builder.Entity<ApplicationUser>()
-                .HasMany(u => u.Faculties)
-                .WithMany(f => f.Users);
+            builder.Entity<ApplicationUser>(entity =>
+            {
+                entity.Property(u => u.FirstName)
+                    .HasMaxLength(100);
+
+                entity.Property(u => u.LastName)
+                    .HasMaxLength(100);
+
+                entity.Property(u => u.UsosRefreshTokenProtected)
+                    .HasMaxLength(4000);
+
+                entity.HasMany(u => u.Faculties)
+                    .WithMany(f => f.Users);
+
+                entity.HasMany(u => u.PersonalEvents)
+                    .WithOne(e => e.User)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(u => u.UsosEvents)
+                    .WithOne(e => e.User)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
             builder.Entity<PersonalEvent>(entity =>
             {
@@ -49,11 +71,30 @@ namespace StudentPlanner.Api.Data
 
                 entity.Property(e => e.Location)
                     .HasMaxLength(300);
+            });
 
-                entity.HasOne(e => e.User)
-                    .WithMany()
-                    .HasForeignKey(e => e.UserId)
-                    .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<UsosEvent>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+
+                entity.Property(e => e.ExternalId)
+                    .IsRequired()
+                    .HasMaxLength(200);
+
+                entity.Property(e => e.Title)
+                    .IsRequired()
+                    .HasMaxLength(200);
+
+                entity.Property(e => e.Location)
+                    .HasMaxLength(300);
+
+                entity.Property(e => e.Room)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Teacher)
+                    .HasMaxLength(200);
+
+                entity.HasIndex(e => new { e.UserId, e.ExternalId });
             });
         }
     }

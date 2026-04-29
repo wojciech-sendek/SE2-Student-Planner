@@ -43,7 +43,6 @@ namespace StudentPlanner.Api.Services
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SecretKey));
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
             var expires = DateTime.UtcNow.AddMinutes(_jwtOptions.ExpiryMinutes);
 
             var token = new JwtSecurityToken(
@@ -53,14 +52,13 @@ namespace StudentPlanner.Api.Services
                 expires: expires,
                 signingCredentials: credentials);
 
-            var tokenValue = new JwtSecurityTokenHandler().WriteToken(token);
-
             return new AuthResponseDto
             {
-                Token = tokenValue,
+                Token = new JwtSecurityTokenHandler().WriteToken(token),
                 ExpiresAtUtc = expires,
                 Email = user.Email ?? string.Empty,
-                Roles = roles
+                Roles = roles,
+                UsosScheduleSyncedAtUtc = user.UsosScheduleSyncedAtUtc
             };
         }
     }

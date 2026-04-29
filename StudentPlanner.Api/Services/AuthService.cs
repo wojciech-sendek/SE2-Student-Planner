@@ -13,8 +13,8 @@ namespace StudentPlanner.Api.Services
         private readonly IJwtTokenService _jwtTokenService;
         private readonly ApplicationDbContext _dbContext;
         private readonly IEmailService _emailService;
+        private readonly IUsosService _usosService;
 
-        //TODO: move to config
         private static readonly string[] AllowedEmailDomains =
         {
             "pw.edu.pl"
@@ -24,54 +24,68 @@ namespace StudentPlanner.Api.Services
             UserManager<ApplicationUser> userManager,
             IJwtTokenService jwtTokenService,
             ApplicationDbContext dbContext,
-            IEmailService emailService)
+            IEmailService emailService,
+            IUsosService usosService)
         {
             _userManager = userManager;
             _jwtTokenService = jwtTokenService;
             _dbContext = dbContext;
             _emailService = emailService;
+            _usosService = usosService;
         }
 
-        public async Task<(bool Succeeded, IEnumerable<string> Errors)> RegisterAsync(RegisterRequestDto dto)
+        public async Task<(bool Succeeded, IEnumerable<string> Errors, RegisterResponseDto? Response)> RegisterAsync(RegisterRequestDto dto)
         {
             var errors = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(dto.ConfirmPassword)
+                && !string.Equals(dto.Password, dto.ConfirmPassword, StringComparison.Ordinal))
+            {
+                errors.Add("Passwords don't match.");
+                return (false, errors, null);
+            }
 
             if (!IsAllowedUniversityEmail(dto.Email))
             {
                 errors.Add("Please enter a valid university email.");
-                return (false, errors);
+                return (false, errors, null);
             }
 
+            var email = dto.Email.Trim();
+
             var existingUser = await _userManager.Users
-                .FirstOrDefaultAsync(u => u.Email == dto.Email);
+                .FirstOrDefaultAsync(u => u.Email == email);
 
             if (existingUser is not null)
             {
                 errors.Add("An account with this email already exists.");
-                return (false, errors);
+                return (false, errors, null);
             }
 
             var user = new ApplicationUser
             {
-                UserName = dto.Email,
-                Email = dto.Email,
-                FirstName = dto.FirstName,
-                LastName = dto.LastName
+                UserName = email,
+                Email = email,
+                FirstName = dto.FirstName.Trim(),
+                LastName = dto.LastName.Trim(),
+                EmailConfirmed = true
             };
 
-            var result = await _userManager.CreateAsync(user, dto.Password);
+            var createResult = await _userManager.CreateAsync(user, dto.Password);
 
-            if (!result.Succeeded)
+            if (!createResult.Succeeded)
             {
-                errors.AddRange(result.Errors.Select(e => e.Description));
-                return (false, errors);
+                errors.AddRange(createResult.Errors.Select(e => e.Description));
+                return (false, errors, null);
             }
 
             var universityFaculty = await _dbContext.Faculties
                 .FirstOrDefaultAsync(f => f.Name == "university");
 
             if (universityFaculty is not null)
+            {
                 user.Faculties.Add(universityFaculty);
+            }
 
             if (dto.FacultyId.HasValue)
             {
@@ -79,13 +93,30 @@ namespace StudentPlanner.Api.Services
                     .FirstOrDefaultAsync(f => f.Id == dto.FacultyId.Value);
 
                 if (departmentFaculty is not null)
+                {
                     user.Faculties.Add(departmentFaculty);
+                }
             }
 
             await _userManager.UpdateAsync(user);
-            await _userManager.AddToRoleAsync(user, "User");
 
-            return (true, Enumerable.Empty<string>());
+            var roleResult = await _userManager.AddToRoleAsync(user, "User");
+            if (!roleResult.Succeeded)
+            {
+                await _userManager.DeleteAsync(user);
+                errors.AddRange(roleResult.Errors.Select(e => e.Description));
+                return (false, errors, null);
+            }
+
+            var authorization = _usosService.CreateAuthorizationUrl(user.Id);
+
+            return (true, Enumerable.Empty<string>(), new RegisterResponseDto
+            {
+                Message = "Registration successful.",
+                UserId = user.Id,
+                UsosAuthorizationUrl = authorization.AuthorizationUrl,
+                UsosState = authorization.State
+            });
         }
 
         public async Task<AuthResponseDto?> LoginAsync(LoginRequestDto dto)
@@ -103,6 +134,16 @@ namespace StudentPlanner.Api.Services
             if (!validPassword)
             {
                 return null;
+            }
+
+            var roles = await _userManager.GetRolesAsync(user);
+            var isRegularUser = roles.Contains("User")
+                                && !roles.Contains("Manager")
+                                && !roles.Contains("Admin");
+
+            if (isRegularUser)
+            {
+                await _usosService.SyncScheduleForUserAsync(user);
             }
 
             return await _jwtTokenService.CreateTokenAsync(user);
@@ -137,41 +178,50 @@ namespace StudentPlanner.Api.Services
             }
 
             var result = await _userManager.DeleteAsync(user);
-
             return result.Succeeded;
         }
 
         public async Task ForgotPasswordAsync(ForgotPasswordRequestDto dto)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null)
+
+            if (user is null)
             {
-                // We don't want to reveal that the user does not exist
                 return;
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
             var subject = "Student Planner - Password Reset";
-            var body = $"Your password reset token is: <b>{token}</b><br/>" +
-                       "If you did not request a password reset, please ignore this email.";
+            var body = $"""
+                <p>Your password reset token is:</p>
+                <p><b>{System.Net.WebUtility.HtmlEncode(token)}</b></p>
+                <p>This token is time-limited. If you did not request a password reset, ignore this email.</p>
+                """;
 
             await _emailService.SendEmailAsync(user.Email!, subject, body);
         }
 
         public async Task<(bool Succeeded, IEnumerable<string> Errors)> ResetPasswordAsync(ResetPasswordRequestDto dto)
         {
-            var user = await _userManager.FindByEmailAsync(dto.Email);
-            if (user == null)
+            if (!string.IsNullOrWhiteSpace(dto.ConfirmPassword)
+                && !string.Equals(dto.NewPassword, dto.ConfirmPassword, StringComparison.Ordinal))
             {
-                return (false, new[] { "Invalid request." });
+                return (false, new[] { "Passwords don't match." });
+            }
+
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+
+            if (user is null)
+            {
+                return (false, new[] { "Invalid token." });
             }
 
             var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NewPassword);
 
             if (!result.Succeeded)
             {
-                return (false, result.Errors.Select(e => e.Description));
+                return (false, new[] { "Invalid token." });
             }
 
             return (true, Enumerable.Empty<string>());
@@ -180,6 +230,7 @@ namespace StudentPlanner.Api.Services
         private static bool IsAllowedUniversityEmail(string email)
         {
             var atIndex = email.LastIndexOf('@');
+
             if (atIndex < 0 || atIndex == email.Length - 1)
             {
                 return false;
