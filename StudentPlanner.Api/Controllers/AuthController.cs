@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentPlanner.Api.Dtos.Auth;
 using StudentPlanner.Api.Services.Interfaces;
+using StudentPlanner.Api.Services;
 
 namespace StudentPlanner.Api.Controllers
 {
@@ -58,7 +59,26 @@ namespace StudentPlanner.Api.Controllers
                 return ValidationProblem(ModelState);
             }
 
-            var authResponse = await _authService.LoginAsync(dto);
+            AuthResponseDto? authResponse;
+
+            try
+            {
+                authResponse = await _authService.LoginAsync(dto);
+            }
+            catch (UsosAuthorizationRequiredException)
+            {
+                return Conflict(new
+                {
+                    Message = "USOS authorization required."
+                });
+            }
+            catch (UsosApiException)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    Message = "USOS API failure."
+                });
+            }
 
             if (authResponse is null)
             {
@@ -70,7 +90,48 @@ namespace StudentPlanner.Api.Controllers
 
             return Ok(authResponse);
         }
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
 
+            await _authService.RequestPasswordResetAsync(dto);
+
+            return Ok(new
+            {
+                Message = "If the email exists, a reset password token was sent."
+            });
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var result = await _authService.ResetPasswordAsync(dto);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    Message = "Password reset failed.",
+                    Errors = result.Errors
+                });
+            }
+
+            return Ok(new
+            {
+                Message = "Password Updated"
+            });
+        }
         /// <summary>
         /// Returns information about the currently authenticated user.
         /// </summary>

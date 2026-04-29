@@ -1,33 +1,55 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StudentPlanner.Api.Services;
 using StudentPlanner.Api.Services.Interfaces;
 
 namespace StudentPlanner.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "User")]
     public class UsosController : ControllerBase
     {
-        private readonly IUsosMockService _usosService;
+        private readonly IUsosService _usosService;
 
-        public UsosController(IUsosMockService usosService)
+        public UsosController(IUsosService usosService)
         {
             _usosService = usosService;
         }
 
-        [HttpPost("connect")]
-        public async Task<IActionResult> Connect()
+        [HttpGet("authorization-url")]
+        [Authorize(Roles = "User")]
+        public async Task<IActionResult> GetAuthorizationUrl()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
 
-            await _usosService.ConnectAsync(userId);
-            return Ok(new { Message = "Mock USOS connected and schedule synced." });
+            var url = await _usosService.BuildAuthorizationUrlAsync(userId);
+            return Ok(new { Url = url });
+        }
+
+        [HttpGet("callback")]
+        [AllowAnonymous]
+        public async Task<IActionResult> Callback([FromQuery] string code, [FromQuery] string state)
+        {
+            if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(state))
+            {
+                return BadRequest(new { Message = "Missing USOS OAuth code or state." });
+            }
+
+            try
+            {
+                await _usosService.CompleteAuthorizationAsync(code, state);
+                return Ok(new { Message = "USOS authorization completed and schedule synced." });
+            }
+            catch (UsosApiException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
         }
 
         [HttpGet("status")]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> Status()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -37,16 +59,29 @@ namespace StudentPlanner.Api.Controllers
         }
 
         [HttpPost("sync")]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> Sync()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
 
-            await _usosService.SyncAsync(userId);
-            return Ok(new { Message = "Mock USOS schedule synced." });
+            try
+            {
+                await _usosService.SyncAsync(userId);
+                return Ok(new { Message = "USOS schedule synced." });
+            }
+            catch (UsosAuthorizationRequiredException)
+            {
+                return Conflict(new { Message = "USOS authorization required." });
+            }
+            catch (UsosApiException)
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new { Message = "USOS API failure." });
+            }
         }
 
         [HttpDelete("disconnect")]
+        [Authorize(Roles = "User")]
         public async Task<IActionResult> Disconnect()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

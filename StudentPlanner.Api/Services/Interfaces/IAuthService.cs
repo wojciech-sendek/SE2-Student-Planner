@@ -8,5 +8,8 @@ namespace StudentPlanner.Api.Services.Interfaces
         Task<AuthResponseDto?> LoginAsync(LoginRequestDto dto);
         Task<CurrentUserDto?> GetCurrentUserAsync(string userId);
         Task<bool> DeleteAccountAsync(string userId);
+
+        Task RequestPasswordResetAsync(ForgotPasswordRequestDto dto);
+        Task<(bool Succeeded, IEnumerable<string> Errors)> ResetPasswordAsync(ResetPasswordRequestDto dto);
     }
 }

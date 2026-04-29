@@ -74,7 +74,8 @@ namespace StudentPlanner.Api
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
-            builder.Services.AddScoped<IUsosMockService, UsosMockService>();
+            builder.Services.AddHttpClient<IUsosService, UsosService>();
+            builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
             var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
             var corsOrigins = configuredOrigins is { Length: > 0 }
@@ -133,6 +134,17 @@ namespace StudentPlanner.Api
                 {
                     options.IncludeXmlComments(xmlPath);
                 }
+            });
+
+            builder.Services.Configure<UsosOptions>(
+            builder.Configuration.GetSection(UsosOptions.SectionName));
+
+                    builder.Services.Configure<SmtpOptions>(
+                        builder.Configuration.GetSection(SmtpOptions.SectionName));
+
+                    builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+                    {
+                        options.TokenLifespan = TimeSpan.FromMinutes(30);
             });
 
             var app = builder.Build();

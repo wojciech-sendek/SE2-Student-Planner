@@ -11,9 +11,9 @@ namespace StudentPlanner.Api.Controllers
     [Authorize(Roles = "User")]
     public class AcademicEventsController : ControllerBase
     {
-        private readonly IUsosMockService _usosService;
+        private readonly IUsosService _usosService;
 
-        public AcademicEventsController(IUsosMockService usosService)
+        public AcademicEventsController(IUsosService usosService)
         {
             _usosService = usosService;
         }
