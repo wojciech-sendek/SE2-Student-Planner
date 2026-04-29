@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using StudentPlanner.Api.Configurations;
 using StudentPlanner.Api.Data;
@@ -22,6 +21,14 @@ namespace StudentPlanner.Api
             builder.Services.Configure<JwtOptions>(
                 builder.Configuration.GetSection(JwtOptions.SectionName));
 
+            builder.Services.Configure<SmtpOptions>(
+                builder.Configuration.GetSection(SmtpOptions.SectionName));
+
+            builder.Services.Configure<UsosOptions>(
+                builder.Configuration.GetSection(UsosOptions.SectionName));
+
+            builder.Services.AddDataProtection();
+
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -36,11 +43,10 @@ namespace StudentPlanner.Api
 
                     options.User.RequireUniqueEmail = true;
 
-                    options.Tokens.PasswordResetTokenProvider = "Numeric";
+                    options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultProvider;
                 })
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders()
-                .AddTokenProvider<NumericTokenProvider<ApplicationUser>>("Numeric");
+                .AddDefaultTokenProviders();
 
             builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
             {
@@ -62,7 +68,7 @@ namespace StudentPlanner.Api
                 })
                 .AddJwtBearer(options =>
                 {
-                    options.RequireHttpsMetadata = false; //TODO: ensure true in production
+                    options.RequireHttpsMetadata = false;
                     options.SaveToken = true;
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -79,15 +85,12 @@ namespace StudentPlanner.Api
 
             builder.Services.AddAuthorization();
 
-            builder.Services.Configure<SmtpOptions>(
-                builder.Configuration.GetSection(SmtpOptions.SectionName));
-
             builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
             builder.Services.AddScoped<IEmailService, SmtpEmailService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
+
             builder.Services.AddHttpClient<IUsosService, UsosService>();
-            builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 
             var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
             var corsOrigins = configuredOrigins is { Length: > 0 }
@@ -124,7 +127,6 @@ namespace StudentPlanner.Api
                     Type = SecuritySchemeType.Http,
                     Scheme = "bearer",
                     Description = "Paste your JWT token here.",
-
                     Reference = new OpenApiReference
                     {
                         Id = JwtBearerDefaults.AuthenticationScheme,
@@ -138,25 +140,6 @@ namespace StudentPlanner.Api
                 {
                     { jwtSecurityScheme, Array.Empty<string>() }
                 });
-
-                var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-                var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-
-                if (File.Exists(xmlPath))
-                {
-                    options.IncludeXmlComments(xmlPath);
-                }
-            });
-
-            builder.Services.Configure<UsosOptions>(
-            builder.Configuration.GetSection(UsosOptions.SectionName));
-
-                    builder.Services.Configure<SmtpOptions>(
-                        builder.Configuration.GetSection(SmtpOptions.SectionName));
-
-                    builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
-                    {
-                        options.TokenLifespan = TimeSpan.FromMinutes(30);
             });
 
             var app = builder.Build();

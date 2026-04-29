@@ -4,15 +4,14 @@
     {
         public const string SectionName = "Usos";
 
-        public string AuthorizationEndpoint { get; set; } = null!;
-        public string TokenEndpoint { get; set; } = null!;
-        public string ScheduleEndpoint { get; set; } = null!;
+        public string AuthorizationEndpoint { get; set; } = string.Empty;
+        public string TokenEndpoint { get; set; } = string.Empty;
+        public string ScheduleEndpoint { get; set; } = string.Empty;
+        public string ClientId { get; set; } = string.Empty;
+        public string ClientSecret { get; set; } = string.Empty;
+        public string RedirectUri { get; set; } = string.Empty;
+        public string Scope { get; set; } = string.Empty;
 
-        public string ClientId { get; set; } = null!;
-        public string ClientSecret { get; set; } = null!;
-        public string RedirectUri { get; set; } = null!;
-
-        public string Scope { get; set; } = "schedule";
-        public int OAuthStateLifetimeMinutes { get; set; } = 10;
+        public bool UseMockScheduleWhenNotConfigured { get; set; } = true;
     }
 }

@@ -2,8 +2,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentPlanner.Api.Dtos.Auth;
-using StudentPlanner.Api.Services.Interfaces;
 using StudentPlanner.Api.Services;
+using StudentPlanner.Api.Services.Interfaces;
 
 namespace StudentPlanner.Api.Controllers
 {
@@ -18,9 +18,6 @@ namespace StudentPlanner.Api.Controllers
             _authService = authService;
         }
 
-        /// <summary>
-        /// Registers a new user account using a university email address.
-        /// </summary>
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
@@ -34,22 +31,27 @@ namespace StudentPlanner.Api.Controllers
 
             if (!result.Succeeded)
             {
+                var errors = result.Errors.ToList();
+
+                if (errors.Any(e => e.Contains("already exists", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return Conflict(new
+                    {
+                        Message = "Registration failed.",
+                        Errors = errors
+                    });
+                }
+
                 return BadRequest(new
                 {
                     Message = "Registration failed.",
-                    Errors = result.Errors
+                    Errors = errors
                 });
             }
 
-            return Ok(new
-            {
-                Message = "Registration successful."
-            });
+            return Ok(result.Response);
         }
 
-        /// <summary>
-        /// Logs in an existing user and returns a JWT token.
-        /// </summary>
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
@@ -84,12 +86,13 @@ namespace StudentPlanner.Api.Controllers
             {
                 return Unauthorized(new
                 {
-                    Message = "Invalid credentials."
+                    Message = "Invalid Credentials"
                 });
             }
 
             return Ok(authResponse);
         }
+
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto dto)
@@ -99,7 +102,7 @@ namespace StudentPlanner.Api.Controllers
                 return ValidationProblem(ModelState);
             }
 
-            await _authService.RequestPasswordResetAsync(dto);
+            await _authService.ForgotPasswordAsync(dto);
 
             return Ok(new
             {
@@ -132,9 +135,7 @@ namespace StudentPlanner.Api.Controllers
                 Message = "Password Updated"
             });
         }
-        /// <summary>
-        /// Returns information about the currently authenticated user.
-        /// </summary>
+
         [HttpGet("me")]
         [Authorize]
         public async Task<IActionResult> Me()
@@ -156,9 +157,6 @@ namespace StudentPlanner.Api.Controllers
             return Ok(currentUser);
         }
 
-        /// <summary>
-        /// Deletes the currently authenticated user's account.
-        /// </summary>
         [HttpDelete("delete-account")]
         [Authorize]
         public async Task<IActionResult> DeleteAccount()
@@ -181,55 +179,6 @@ namespace StudentPlanner.Api.Controllers
             }
 
             return NoContent();
-        }
-
-        /// <summary>
-        /// Sends a password reset token to the user's email if the account exists.
-        /// </summary>
-        [HttpPost("forgot-password")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto dto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return ValidationProblem(ModelState);
-            }
-
-            await _authService.ForgotPasswordAsync(dto);
-
-            return Ok(new
-            {
-                Message = "If an account with that email exists, a password reset token has been sent."
-            });
-        }
-
-        /// <summary>
-        /// Resets the user's password using a valid reset token.
-        /// </summary>
-        [HttpPost("reset-password")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto dto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return ValidationProblem(ModelState);
-            }
-
-            var result = await _authService.ResetPasswordAsync(dto);
-
-            if (!result.Succeeded)
-            {
-                return BadRequest(new
-                {
-                    Message = "Password reset failed.",
-                    Errors = result.Errors
-                });
-            }
-
-            return Ok(new
-            {
-                Message = "Password reset successful."
-            });
         }
     }
 }
