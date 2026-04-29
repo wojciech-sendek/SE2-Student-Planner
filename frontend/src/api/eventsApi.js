@@ -3,6 +3,7 @@ import { HttpError, readJsonResponse } from './httpError.js'
 import { authHeaders } from '../lib/authStorage.js'
 
 const PERSONAL_EVENTS_PATH = '/api/PersonalEvents'
+const ACADEMIC_EVENTS_PATH = '/api/AcademicEvents'
 
 async function authedFetch(path, options = {}) {
   const { headers: extraHeaders, ...rest } = options
@@ -34,9 +35,23 @@ function ensurePersonalEventShape(event) {
   }
 }
 
-export async function fetchAllEvents() {
+export async function fetchPersonalEvents() {
   const data = await authedFetch(PERSONAL_EVENTS_PATH)
   return Array.isArray(data) ? data.map(ensurePersonalEventShape) : ensurePersonalEventShape(data)
+}
+
+export async function fetchAcademicEvents() {
+  return authedFetch(ACADEMIC_EVENTS_PATH)
+}
+
+export async function fetchAllEvents() {
+  const [personal, academic] = await Promise.all([
+    fetchPersonalEvents(),
+    fetchAcademicEvents(),
+  ])
+  const personalList = Array.isArray(personal) ? personal : personal ? [personal] : []
+  const academicList = Array.isArray(academic) ? academic : academic ? [academic] : []
+  return [...personalList, ...academicList]
 }
 
 export async function createPersonalEvent(details) {

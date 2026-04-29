@@ -129,6 +129,26 @@ namespace StudentPlanner.Api.Controllers
             }
         }
 
+        [HttpGet("status")]
+        [Authorize(Roles = "User")]
+        public async Task<ActionResult<UsosStatusDto>> GetStatus()
+        {
+            var user = await GetCurrentApplicationUserAsync();
+
+            if (user is null)
+            {
+                return Unauthorized();
+            }
+
+            var events = await _usosService.GetScheduleAsync(user.Id);
+
+            return Ok(new UsosStatusDto
+            {
+                IsConnected = !string.IsNullOrWhiteSpace(user.UsosRefreshTokenProtected),
+                SyncedEventsCount = events.Count
+            });
+        }
+
         [HttpGet("events")]
         [Authorize(Roles = "User")]
         public async Task<ActionResult<IEnumerable<UsosEventDto>>> GetEvents(
