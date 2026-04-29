@@ -24,6 +24,14 @@ export function register(payload) {
   return postJson('/api/Auth/register', payload)
 }
 
+export function forgotPassword(email) {
+  return postJson('/api/Auth/forgot-password', { email })
+}
+
+export function resetPassword(payload) {
+  return postJson('/api/Auth/reset-password', payload)
+}
+
 export async function fetchCurrentUser() {
   const res = await fetch(apiUrl('/api/Auth/me'), {
     method: 'GET',

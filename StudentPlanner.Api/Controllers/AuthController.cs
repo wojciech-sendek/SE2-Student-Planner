@@ -121,5 +121,54 @@ namespace StudentPlanner.Api.Controllers
 
             return NoContent();
         }
+
+        /// <summary>
+        /// Sends a password reset token to the user's email if the account exists.
+        /// </summary>
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            await _authService.ForgotPasswordAsync(dto);
+
+            return Ok(new
+            {
+                Message = "If an account with that email exists, a password reset token has been sent."
+            });
+        }
+
+        /// <summary>
+        /// Resets the user's password using a valid reset token.
+        /// </summary>
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            var result = await _authService.ResetPasswordAsync(dto);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    Message = "Password reset failed.",
+                    Errors = result.Errors
+                });
+            }
+
+            return Ok(new
+            {
+                Message = "Password reset successful."
+            });
+        }
     }
 }

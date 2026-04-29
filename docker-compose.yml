@@ -29,6 +29,8 @@
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Server=database;Database=StudentPlannerDb;User Id=sa;Password=YourStrongPassword!123;TrustServerCertificate=True;
       - Cors__Origins=["http://localhost:5173", "http://localhost"]
+      - Smtp__Host=mailpit
+      - Smtp__Port=1025
     ports:
       - "5289:8080"
     networks:
@@ -45,6 +47,15 @@
       - student-planner-net
     depends_on:
       - api
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: student-planner-mailpit
+    ports:
+      - "1025:1025" # SMTP port
+      - "8025:8025" # Web UI
+    networks:
+      - student-planner-net
 
 networks:
   student-planner-net:
