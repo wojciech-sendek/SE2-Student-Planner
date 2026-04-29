@@ -55,7 +55,7 @@ namespace StudentPlanner.Api.Services
             var rawState = $"{userId}|{expiresAtUtc}|{Guid.NewGuid():N}";
             var protectedState = _protector.Protect(rawState);
 
-            var query = new Dictionary<string, string>
+            var query = new Dictionary<string, string?>
             {
                 ["response_type"] = "code",
                 ["client_id"] = _options.ClientId,

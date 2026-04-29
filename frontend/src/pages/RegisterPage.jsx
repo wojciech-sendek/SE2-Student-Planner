@@ -43,6 +43,7 @@ export default function RegisterPage() {
   const [errors, setErrors] = useState({})
   const [apiError, setApiError] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [usosAuthorizationUrl, setUsosAuthorizationUrl] = useState(null)
 
   function validate() {
     const next = {}
@@ -78,13 +79,20 @@ export default function RegisterPage() {
 
     setIsSubmitting(true)
     try {
-      await register({
+      const response = await register({
         email: email.trim(),
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         facultyId: null,
       })
+      const authorizationUrl = response?.usosAuthorizationUrl ?? response?.UsosAuthorizationUrl
+
+      if (authorizationUrl) {
+        setUsosAuthorizationUrl(authorizationUrl)
+        return
+      }
+
       navigate('/login', { replace: true, state: { registered: true } })
     } catch (err) {
       if (err instanceof HttpError) {
@@ -111,6 +119,37 @@ export default function RegisterPage() {
         </header>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white/90 shadow-lg shadow-slate-200/60 backdrop-blur-sm px-6 py-8 sm:px-8">
+          {usosAuthorizationUrl ? (
+            <div className="space-y-4">
+              <div
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+                role="status"
+              >
+                Account created. Finish USOS authorization before your first login.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const popup = window.open(usosAuthorizationUrl, '_blank', 'noopener,noreferrer')
+                  if (!popup) window.location.assign(usosAuthorizationUrl)
+                }}
+                className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
+              >
+                Authorize with USOS
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  navigate('/login', {
+                    replace: true,
+                    state: { registered: true, usosAuthorizationUrl },
+                  })}
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Continue to sign in
+              </button>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {apiError && (
               <div
@@ -335,6 +374,7 @@ export default function RegisterPage() {
               </Link>
             </p>
           </form>
+          )}
         </div>
       </div>
     </div>

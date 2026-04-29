@@ -14,6 +14,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const justRegistered = Boolean(location.state?.registered)
+  const usosAuthorizationUrl = location.state?.usosAuthorizationUrl ?? null
   const formId = useId()
   const emailId = `${formId}-email`
   const passwordId = `${formId}-password`
@@ -37,6 +38,7 @@ export default function LoginPage() {
 
   const [errors, setErrors] = useState({})
   const [apiError, setApiError] = useState(null)
+  const [requiresUsosAuthorization, setRequiresUsosAuthorization] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   function validateLogin() {
@@ -52,6 +54,7 @@ export default function LoginPage() {
   async function handleLoginSubmit(e) {
     e.preventDefault()
     setApiError(null)
+    setRequiresUsosAuthorization(false)
     if (!validateLogin()) return
 
     setIsSubmitting(true)
@@ -70,6 +73,10 @@ export default function LoginPage() {
         const msgs = extractErrorMessages(err.body)
         if (err.status === 401) {
           setApiError('Invalid email or password.')
+        } else if (err.status === 409) {
+          const message = msgs.join(' ') || 'USOS authorization required.'
+          setApiError(message)
+          setRequiresUsosAuthorization(message.toLowerCase().includes('usos authorization required'))
         } else if (msgs.length) {
           setApiError(msgs.join(' '))
         } else {
@@ -83,6 +90,12 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  function handleOpenUsosAuthorization() {
+    if (!usosAuthorizationUrl) return
+    const popup = window.open(usosAuthorizationUrl, '_blank', 'noopener,noreferrer')
+    if (!popup) window.location.assign(usosAuthorizationUrl)
   }
 
   function validateForgot() {
@@ -181,6 +194,21 @@ export default function LoginPage() {
                   role="alert"
                 >
                   {apiError}
+                </div>
+              )}
+              {requiresUsosAuthorization && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+                  {usosAuthorizationUrl ? (
+                    <button
+                      type="button"
+                      onClick={handleOpenUsosAuthorization}
+                      className="font-semibold text-amber-800 underline decoration-2 underline-offset-2 hover:text-amber-900"
+                    >
+                      Continue USOS authorization
+                    </button>
+                  ) : (
+                    <p>Complete USOS authorization first (use the registration flow), then sign in again.</p>
+                  )}
                 </div>
               )}
 

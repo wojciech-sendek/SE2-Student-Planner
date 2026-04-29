@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  fetchAllEvents,
+  fetchPersonalEvents,
+  fetchAcademicEvents,
   createPersonalEvent,
   updatePersonalEvent,
   deletePersonalEvent,
@@ -17,62 +18,6 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 const MAX_VISIBLE = 3
-const MOCK_USOS_ENABLED = true
-
-function toIsoAtLocalTime(baseDate, hour, minute, durationMinutes) {
-  const start = new Date(
-    baseDate.getFullYear(),
-    baseDate.getMonth(),
-    baseDate.getDate(),
-    hour,
-    minute,
-    0,
-    0
-  )
-  const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
-  return { startTime: start.toISOString(), endTime: end.toISOString() }
-}
-
-function getMockUsosEvents(anchorDate = new Date()) {
-  const year = anchorDate.getFullYear()
-  const month = anchorDate.getMonth()
-  const base = new Date(year, month, anchorDate.getDate())
-  const dow = base.getDay()
-  const mondayOffset = dow === 0 ? -6 : 1 - dow
-  const monday = new Date(year, month, base.getDate() + mondayOffset)
-
-  const schedule = [
-    { dayOffset: 0, title: 'Algorithms Lecture', hour: 8, minute: 15, duration: 90, location: 'B-201' },
-    { dayOffset: 1, title: 'Software Engineering Lab', hour: 10, minute: 0, duration: 120, location: 'C-105' },
-    { dayOffset: 2, title: 'Databases Lecture', hour: 12, minute: 15, duration: 90, location: 'A-3' },
-    { dayOffset: 3, title: 'Operating Systems', hour: 9, minute: 45, duration: 90, location: 'D-12' },
-    { dayOffset: 4, title: 'Computer Networks', hour: 14, minute: 0, duration: 90, location: 'B-102' },
-  ]
-
-  const weeksToGenerate = 3
-  const events = []
-  for (let week = 0; week < weeksToGenerate; week++) {
-    for (const item of schedule) {
-      const classDate = new Date(
-        monday.getFullYear(),
-        monday.getMonth(),
-        monday.getDate() + week * 7 + item.dayOffset
-      )
-      const { startTime, endTime } = toIsoAtLocalTime(classDate, item.hour, item.minute, item.duration)
-      events.push({
-        id: `mock-usos-${week}-${item.dayOffset}-${item.title.replace(/\s+/g, '-').toLowerCase()}`,
-        title: item.title,
-        startTime,
-        endTime,
-        location: item.location,
-        description: 'Mock USOS class event (frontend fallback).',
-        eventType: 'UsosEvent',
-        isPersonal: false,
-      })
-    }
-  }
-  return events
-}
 
 function isPersonalEvent(event) {
   if (!event) return false
@@ -93,15 +38,25 @@ function getField(event, ...keys) {
 }
 
 function normalizeEvent(event) {
+  const isPersonal = isPersonalEvent(event)
+  const id = getField(event, 'id')
+  const externalId = getField(event, 'externalId')
+  const source = String(getField(event, 'eventType', 'type', 'source') ?? '')
+  const fallbackIdentity = `${getField(event, 'title') ?? 'event'}-${getField(event, 'startTime') ?? ''}-${getField(event, 'endTime') ?? ''}`
+  const stableId = isPersonal
+    ? `personal-${id ?? externalId ?? fallbackIdentity}`
+    : `readonly-${source || 'event'}-${id ?? externalId ?? fallbackIdentity}`
+
   return {
-    id: getField(event, 'id'),
+    id,
+    stableId,
     title: getField(event, 'title') ?? '(No title)',
     startTime: getField(event, 'startTime'),
     endTime: getField(event, 'endTime'),
     location: getField(event, 'location') ?? '',
     description: getField(event, 'description') ?? '',
-    eventType: String(getField(event, 'eventType', 'type') ?? ''),
-    isPersonal: isPersonalEvent(event),
+    eventType: source,
+    isPersonal,
   }
 }
 
@@ -174,12 +129,48 @@ export default function Calendar() {
   const loadEvents = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await fetchAllEvents()
-      const list = Array.isArray(data) ? data : (data?.events ?? data?.Events ?? [])
-      const normalizedEvents = list.map(normalizeEvent)
-      const mockedUsosEvents = MOCK_USOS_ENABLED ? getMockUsosEvents(today).map(normalizeEvent) : []
-      setEvents([...normalizedEvents, ...mockedUsosEvents])
-      setGlobalError(null)
+      const [personalResult, academicResult] = await Promise.allSettled([
+        fetchPersonalEvents(),
+        fetchAcademicEvents(),
+      ])
+
+      const merged = []
+      const errors = []
+
+      if (personalResult.status === 'fulfilled') {
+        const list = Array.isArray(personalResult.value)
+          ? personalResult.value
+          : personalResult.value
+            ? [personalResult.value]
+            : []
+        merged.push(...list.map(normalizeEvent))
+      } else {
+        if (personalResult.reason instanceof HttpError && personalResult.reason.status === 401) {
+          clearAuth()
+          window.location.assign('/login')
+          return
+        }
+        errors.push(getRequestErrorMessage(personalResult.reason, 'Could not load personal events'))
+      }
+
+      if (academicResult.status === 'fulfilled') {
+        const list = Array.isArray(academicResult.value)
+          ? academicResult.value
+          : academicResult.value
+            ? [academicResult.value]
+            : []
+        merged.push(...list.map(normalizeEvent))
+      } else {
+        if (academicResult.reason instanceof HttpError && academicResult.reason.status === 401) {
+          clearAuth()
+          window.location.assign('/login')
+          return
+        }
+        errors.push(getRequestErrorMessage(academicResult.reason, 'Could not load USOS events'))
+      }
+
+      setEvents(merged)
+      setGlobalError(errors.length ? errors.join(' ') : null)
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
@@ -222,8 +213,10 @@ export default function Calendar() {
       const res = await updatePersonalEvent(id, formData)
       setModal(null)
       const updated = res ? normalizeEvent(res) : null
-      if (updated?.id) {
-        setEvents(prev => prev.map(e => (e.id === id ? updated : e)))
+      if (updated?.stableId) {
+        setEvents(prev =>
+          prev.map(e => (e.isPersonal && String(e.id) === String(id) ? updated : e))
+        )
       } else {
         await loadEvents()
       }
@@ -242,7 +235,7 @@ export default function Calendar() {
     try {
       await deletePersonalEvent(id)
       setModal(null)
-      setEvents(prev => prev.filter(e => e.id !== id))
+      setEvents(prev => prev.filter(e => !(e.isPersonal && String(e.id) === String(id))))
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
@@ -331,12 +324,6 @@ export default function Calendar() {
           Other
         </span>
       </div>
-      {MOCK_USOS_ENABLED && (
-        <p className="mb-3 text-xs text-amber-700">
-          Showing mock USOS classes until gateway integration is ready.
-        </p>
-      )}
-
       {/* Weekday labels */}
       <div className="grid grid-cols-7">
         {WEEKDAYS.map(d => (
@@ -383,7 +370,7 @@ export default function Calendar() {
                 <div className="space-y-0.5">
                   {visible.map(event => (
                     <button
-                      key={event.id ?? `${event.title}-${event.startTime}`}
+                      key={event.stableId}
                       onClick={() => setModal({ type: 'details', event })}
                       title={event.title}
                       className={`w-full truncate rounded px-1.5 py-0.5 text-left text-xs text-white transition-colors ${eventChipClass(event)}`}
