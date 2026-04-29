@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using StudentPlanner.Api.Entities;
 
 namespace StudentPlanner.Api.Services
 {

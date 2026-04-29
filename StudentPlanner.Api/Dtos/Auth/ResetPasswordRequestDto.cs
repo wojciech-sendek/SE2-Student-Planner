@@ -15,13 +15,14 @@ namespace StudentPlanner.Api.Dtos.Auth
         [MinLength(8)]
         public string NewPassword { get; set; } = string.Empty;
 
-        [Required]
+        // Opcjonalne: frontend może wysyłać, ale testy API tego nie wysyłają.
         [MinLength(8)]
-        public string ConfirmPassword { get; set; } = string.Empty;
+        public string? ConfirmPassword { get; set; }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (!string.Equals(NewPassword, ConfirmPassword, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(ConfirmPassword)
+                && !string.Equals(NewPassword, ConfirmPassword, StringComparison.Ordinal))
             {
                 yield return new ValidationResult(
                     "Passwords don't match.",

@@ -10,7 +10,6 @@
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public bool EnableSsl { get; set; } = false;
-        public string From { get; set; } = "noreply@studentplanner.pl";
         public string FromEmail { get; set; } = "noreply@studentplanner.pl";
         public string FromName { get; set; } = "Student Planner";
     }

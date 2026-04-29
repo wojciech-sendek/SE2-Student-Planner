@@ -43,10 +43,12 @@ namespace StudentPlanner.Api
 
                     options.User.RequireUniqueEmail = true;
 
-                    options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultProvider;
+                    // IMPORTANT: tests expect 6-digit numeric password reset token.
+                    options.Tokens.PasswordResetTokenProvider = "Numeric";
                 })
                 .AddEntityFrameworkStores<ApplicationDbContext>()
-                .AddDefaultTokenProviders();
+                .AddDefaultTokenProviders()
+                .AddTokenProvider<NumericTokenProvider<ApplicationUser>>("Numeric");
 
             builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
             {

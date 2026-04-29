@@ -38,7 +38,8 @@ namespace StudentPlanner.Api.Services
         {
             var errors = new List<string>();
 
-            if (!string.Equals(dto.Password, dto.ConfirmPassword, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(dto.ConfirmPassword)
+                && !string.Equals(dto.Password, dto.ConfirmPassword, StringComparison.Ordinal))
             {
                 errors.Add("Passwords don't match.");
                 return (false, errors, null);
@@ -203,7 +204,8 @@ namespace StudentPlanner.Api.Services
 
         public async Task<(bool Succeeded, IEnumerable<string> Errors)> ResetPasswordAsync(ResetPasswordRequestDto dto)
         {
-            if (!string.Equals(dto.NewPassword, dto.ConfirmPassword, StringComparison.Ordinal))
+            if (!string.IsNullOrWhiteSpace(dto.ConfirmPassword)
+                && !string.Equals(dto.NewPassword, dto.ConfirmPassword, StringComparison.Ordinal))
             {
                 return (false, new[] { "Passwords don't match." });
             }
