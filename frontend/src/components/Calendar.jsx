@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  fetchPersonalEvents,
-  fetchAcademicEvents,
   fetchAllEvents,
   createPersonalEvent,
   updatePersonalEvent,
