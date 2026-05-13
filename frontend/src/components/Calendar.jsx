@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import {
-  fetchPersonalEvents,
-  fetchAcademicEvents,
+  fetchAllEvents,
   createPersonalEvent,
   updatePersonalEvent,
   deletePersonalEvent,
@@ -129,45 +128,17 @@ export default function Calendar() {
   const loadEvents = useCallback(async () => {
     setLoading(true)
     try {
-      const [personalResult, academicResult] = await Promise.allSettled([
-        fetchPersonalEvents(),
-        fetchAcademicEvents(),
-      ])
-
+      const allEvents = await fetchAllEvents()
+      
       const merged = []
       const errors = []
 
-      if (personalResult.status === 'fulfilled') {
-        const list = Array.isArray(personalResult.value)
-          ? personalResult.value
-          : personalResult.value
-            ? [personalResult.value]
-            : []
-        merged.push(...list.map(normalizeEvent))
-      } else {
-        if (personalResult.reason instanceof HttpError && personalResult.reason.status === 401) {
-          clearAuth()
-          window.location.assign('/login')
-          return
-        }
-        errors.push(getRequestErrorMessage(personalResult.reason, 'Could not load personal events'))
-      }
-
-      if (academicResult.status === 'fulfilled') {
-        const list = Array.isArray(academicResult.value)
-          ? academicResult.value
-          : academicResult.value
-            ? [academicResult.value]
-            : []
-        merged.push(...list.map(normalizeEvent))
-      } else {
-        if (academicResult.reason instanceof HttpError && academicResult.reason.status === 401) {
-          clearAuth()
-          window.location.assign('/login')
-          return
-        }
-        errors.push(getRequestErrorMessage(academicResult.reason, 'Could not load USOS events'))
-      }
+      const list = Array.isArray(allEvents)
+        ? allEvents
+        : allEvents
+          ? [allEvents]
+          : []
+      merged.push(...list.map(normalizeEvent))
 
       setEvents(merged)
       setGlobalError(errors.length ? errors.join(' ') : null)
