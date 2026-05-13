@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
+export default function EventRequestFormModal({ onSave, onCancel }) {
   const [requestType, setRequestType] = useState(0) // 0=CREATE, 1=UPDATE, 2=DELETE
   const [targetEventId, setTargetEventId] = useState('')
   const [title, setTitle] = useState('')
@@ -8,14 +8,12 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
   const [endTime, setEndTime] = useState('')
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
-  const [facultyId, setFacultyId] = useState(faculties?.[0]?.id ?? '')
 
   function handleSubmit(e) {
     e.preventDefault()
     
     const payload = {
       requestType: Number(requestType),
-      facultyId: Number(facultyId),
     }
 
     if (payload.requestType === 1 || payload.requestType === 2) {
@@ -40,20 +38,6 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <h2 className="mb-6 text-xl font-bold text-slate-900">New Event Request</h2>
         <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-          <div>
-            <label className="mb-1.5 block font-medium text-slate-700">Faculty</label>
-            <select
-              value={facultyId}
-              onChange={e => setFacultyId(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              required
-            >
-              {faculties?.map(f => (
-                <option key={f.id} value={f.id}>{f.displayName}</option>
-              ))}
-            </select>
-          </div>
-
           <div>
             <label className="mb-1.5 block font-medium text-slate-700">Request Type</label>
             <select

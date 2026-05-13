@@ -203,7 +203,6 @@ export default function ManagerDashboardPage() {
 
       {modalOpen && (
         <EventRequestFormModal
-          faculties={faculties}
           onSave={handleCreateRequest}
           onCancel={() => setModalOpen(false)}
         />
