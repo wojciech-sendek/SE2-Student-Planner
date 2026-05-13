@@ -77,6 +77,87 @@ namespace StudentPlanner.Api.Data
                     await userManager.AddToRoleAsync(adminUser, "Admin");
                 }
             }
+
+            var managerEmail = "manager.math@pw.edu.pl";
+            var managerUser = await userManager.Users
+                .Include(u => u.Faculties)
+                .FirstOrDefaultAsync(u => u.Email == managerEmail);
+
+            if (managerUser is null)
+            {
+                managerUser = new ApplicationUser
+                {
+                    UserName = managerEmail,
+                    Email = managerEmail,
+                    EmailConfirmed = true,
+                    FirstName = "Math",
+                    LastName = "Manager"
+                };
+
+                var createManagerResult = await userManager.CreateAsync(managerUser, "Manager123!");
+
+                if (createManagerResult.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(managerUser, "Manager");
+                }
+            }
+            else if (!await userManager.IsInRoleAsync(managerUser, "Manager"))
+            {
+                await userManager.AddToRoleAsync(managerUser, "Manager");
+            }
+
+            if (managerUser is not null)
+            {
+                var universityFaculty = await dbContext.Faculties.FirstAsync(f => f.Name == "university");
+                var mathFaculty = await dbContext.Faculties.FirstAsync(f => f.Name == "mathematics");
+
+                if (managerUser.Faculties.All(f => f.Id != universityFaculty.Id))
+                {
+                    managerUser.Faculties.Add(universityFaculty);
+                }
+
+                if (managerUser.Faculties.All(f => f.Id != mathFaculty.Id))
+                {
+                    managerUser.Faculties.Add(mathFaculty);
+                }
+
+                await userManager.UpdateAsync(managerUser);
+            }
+
+            if (!await dbContext.AcademicEvents.AnyAsync())
+            {
+                var universityFaculty = await dbContext.Faculties.FirstAsync(f => f.Name == "university");
+                var mathFaculty = await dbContext.Faculties.FirstAsync(f => f.Name == "mathematics");
+                var electronicsFaculty = await dbContext.Faculties.FirstAsync(f => f.Name == "electronics");
+
+                dbContext.AcademicEvents.AddRange(
+                    new AcademicEvent
+                    {
+                        Title = "University Orientation",
+                        StartTime = DateTime.UtcNow.Date.AddDays(7).AddHours(10),
+                        EndTime = DateTime.UtcNow.Date.AddDays(7).AddHours(12),
+                        Location = "Main Auditorium",
+                        FacultyId = universityFaculty.Id
+                    },
+                    new AcademicEvent
+                    {
+                        Title = "Mathematics Seminar",
+                        StartTime = DateTime.UtcNow.Date.AddDays(8).AddHours(14),
+                        EndTime = DateTime.UtcNow.Date.AddDays(8).AddHours(16),
+                        Location = "MATH-201",
+                        FacultyId = mathFaculty.Id
+                    },
+                    new AcademicEvent
+                    {
+                        Title = "Electronics Lab Briefing",
+                        StartTime = DateTime.UtcNow.Date.AddDays(9).AddHours(9),
+                        EndTime = DateTime.UtcNow.Date.AddDays(9).AddHours(11),
+                        Location = "EL-101",
+                        FacultyId = electronicsFaculty.Id
+                    });
+
+                await dbContext.SaveChangesAsync();
+            }
         }
     }
 }
