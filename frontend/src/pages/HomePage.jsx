@@ -49,6 +49,14 @@ export default function HomePage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {user?.roles?.includes('Manager') && (
+              <Link
+                to="/manager-dashboard"
+                className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
+              >
+                Manager Dashboard
+              </Link>
+            )}
             <Link
               to="/settings"
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"

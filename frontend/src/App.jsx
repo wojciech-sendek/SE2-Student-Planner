@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import RegisterPage from './pages/RegisterPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import ManagerDashboardPage from './pages/ManagerDashboardPage.jsx'
 
 function App() {
   return (
@@ -20,6 +21,14 @@ function App() {
         element={
           <ProtectedRoute>
             <HomePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/manager-dashboard"
+        element={
+          <ProtectedRoute>
+            <ManagerDashboardPage />
           </ProtectedRoute>
         }
       />
