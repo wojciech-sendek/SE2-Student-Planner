@@ -91,6 +91,7 @@ namespace StudentPlanner.Api
             builder.Services.AddScoped<IEmailService, SmtpEmailService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
+            builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
             builder.Services.AddHttpClient<IUsosService, UsosService>();
 

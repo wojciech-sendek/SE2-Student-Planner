@@ -4,6 +4,7 @@ import { authHeaders } from '../lib/authStorage.js'
 
 const PERSONAL_EVENTS_PATH = '/api/PersonalEvents'
 const ACADEMIC_EVENTS_PATH = '/api/AcademicEvents'
+const SCHEDULE_EVENTS_PATH = '/api/Schedule'
 
 async function authedFetch(path, options = {}) {
   const { headers: extraHeaders, ...rest } = options
@@ -45,13 +46,7 @@ export async function fetchAcademicEvents() {
 }
 
 export async function fetchAllEvents() {
-  const [personal, academic] = await Promise.all([
-    fetchPersonalEvents(),
-    fetchAcademicEvents(),
-  ])
-  const personalList = Array.isArray(personal) ? personal : personal ? [personal] : []
-  const academicList = Array.isArray(academic) ? academic : academic ? [academic] : []
-  return [...personalList, ...academicList]
+  return authedFetch(SCHEDULE_EVENTS_PATH)
 }
 
 export async function createPersonalEvent(details) {
