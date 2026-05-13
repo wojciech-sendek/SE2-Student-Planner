@@ -81,11 +81,34 @@ export async function fetchEventRequests() {
 }
 
 export async function createEventRequest(payload) {
-  return authedFetch(EVENT_REQUESTS_PATH, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
+  const headers = { 'Content-Type': 'application/json' }
+  
+  if (payload.requestType === 0) {
+    // CREATE
+    return authedFetch(`${EVENT_REQUESTS_PATH}/create`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...payload.details,
+      }),
+    })
+  } else if (payload.requestType === 1) {
+    // UPDATE
+    return authedFetch(`${EVENT_REQUESTS_PATH}/update/${payload.targetEventId}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload.details),
+    })
+  } else if (payload.requestType === 2) {
+    // DELETE
+    return authedFetch(`${EVENT_REQUESTS_PATH}/delete/${payload.targetEventId}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({}),
+    })
+  }
+  
+  throw new Error('Invalid request type')
 }
 
 export async function fetchEventRequestsByFaculty(facultyId) {

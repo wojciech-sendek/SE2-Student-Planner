@@ -75,6 +75,7 @@ namespace StudentPlanner.Api.Data
                 if (createAdminResult.Succeeded)
                 {
                     await userManager.AddToRoleAsync(adminUser, "Admin");
+                    await userManager.AddToRoleAsync(adminUser, "User");
                 }
             }
 
@@ -99,11 +100,19 @@ namespace StudentPlanner.Api.Data
                 if (createManagerResult.Succeeded)
                 {
                     await userManager.AddToRoleAsync(managerUser, "Manager");
+                    await userManager.AddToRoleAsync(managerUser, "User");
                 }
             }
-            else if (!await userManager.IsInRoleAsync(managerUser, "Manager"))
+            else
             {
-                await userManager.AddToRoleAsync(managerUser, "Manager");
+                if (!await userManager.IsInRoleAsync(managerUser, "Manager"))
+                {
+                    await userManager.AddToRoleAsync(managerUser, "Manager");
+                }
+                if (!await userManager.IsInRoleAsync(managerUser, "User"))
+                {
+                    await userManager.AddToRoleAsync(managerUser, "User");
+                }
             }
 
             if (managerUser is not null)
