@@ -72,3 +72,22 @@ export function deletePersonalEvent(id) {
     method: 'DELETE',
   })
 }
+
+// Event Requests API (Manager/Admin)
+const EVENT_REQUESTS_PATH = '/api/event-requests'
+
+export async function fetchEventRequests() {
+  return authedFetch(EVENT_REQUESTS_PATH)
+}
+
+export async function createEventRequest(payload) {
+  return authedFetch(EVENT_REQUESTS_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function fetchEventRequestsByFaculty(facultyId) {
+  return authedFetch(`${EVENT_REQUESTS_PATH}/faculty?facultyId=${facultyId}`)
+}
