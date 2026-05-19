@@ -43,6 +43,44 @@ public class AuthIntegrationTests : IClassFixture<StudentPlannerApiFactory>
     }
 
     [Fact]
+    public async Task Login_SyncsFutureMockUsosEvents_ForRegisteredUser()
+    {
+        // Arrange
+        var email = $"schedule-{Guid.NewGuid():N}@pw.edu.pl";
+        var password = "Password123!";
+        var registerRequest = new RegisterRequestDto
+        {
+            Email = email,
+            Password = password,
+            FirstName = "Schedule",
+            LastName = "User"
+        };
+
+        var registerResponse = await _client.PostAsJsonAsync("/api/Auth/register", registerRequest);
+        registerResponse.EnsureSuccessStatusCode();
+
+        // Act
+        var loginResponse = await _client.PostAsJsonAsync("/api/Auth/login", new LoginRequestDto
+        {
+            Email = email,
+            Password = password
+        });
+
+        // Assert
+        loginResponse.EnsureSuccessStatusCode();
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var user = await db.Users.SingleAsync(u => u.Email == email);
+        var events = await db.UsosEvents
+            .Where(e => e.UserId == user.Id)
+            .ToListAsync();
+
+        events.Should().NotBeEmpty();
+        events.Should().OnlyContain(e => e.StartTime >= DateTime.UtcNow.Date);
+    }
+
+    [Fact]
     public async Task Me_ReturnsUserInfo_WhenAuthenticated()
     {
         // Arrange

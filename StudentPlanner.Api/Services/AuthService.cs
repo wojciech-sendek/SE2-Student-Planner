@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StudentPlanner.Api.Data;
 using StudentPlanner.Api.Dtos.Auth;
@@ -143,7 +143,14 @@ namespace StudentPlanner.Api.Services
 
             if (isRegularUser)
             {
-                await _usosService.SyncScheduleForUserAsync(user);
+                try
+                {
+                    await _usosService.SyncScheduleForUserAsync(user);
+                }
+                catch
+                {
+                    // Mock or external academic schedule sync must never block login.
+                }
             }
 
             return await _jwtTokenService.CreateTokenAsync(user);

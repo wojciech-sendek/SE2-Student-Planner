@@ -8,7 +8,7 @@ namespace StudentPlanner.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "User")]
+    [Authorize(Roles = "User,Manager")]
     public class ScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;

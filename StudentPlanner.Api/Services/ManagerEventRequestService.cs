@@ -199,6 +199,7 @@ namespace StudentPlanner.Api.Services
         {
             var targetEvent = await _dbContext.AcademicEvents
                 .AsNoTracking()
+                .Include(e => e.Faculty)
                 .FirstOrDefaultAsync(e => e.Id == academicEventId);
 
             if (targetEvent is null)
@@ -206,7 +207,7 @@ namespace StudentPlanner.Api.Services
                 throw new AcademicEventNotFoundException(academicEventId);
             }
 
-            if (targetEvent.FacultyId != managerFacultyId)
+            if (targetEvent.FacultyId != managerFacultyId && targetEvent.Faculty.Name != UniversityFacultyName)
             {
                 throw new ManagerFacultyAccessDeniedException();
             }

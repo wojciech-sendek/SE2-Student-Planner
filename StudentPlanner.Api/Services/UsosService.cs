@@ -41,13 +41,13 @@ namespace StudentPlanner.Api.Services
 
         public UsosAuthorizationUrlResponseDto CreateAuthorizationUrl(string userId)
         {
-            if (!IsOAuthConfigured())
+            if (ShouldUseMockSchedule() || !IsOAuthConfigured())
             {
                 return new UsosAuthorizationUrlResponseDto
                 {
                     AuthorizationUrl = null,
                     State = null,
-                    Message = "USOS OAuth is not configured. Fill the Usos section in appsettings before using real USOS."
+                    Message = "Mock USOS mode is enabled. No external authorization is needed."
                 };
             }
 
@@ -146,16 +146,13 @@ namespace StudentPlanner.Api.Services
         {
             IReadOnlyList<UsosEventDto> remoteEvents;
 
-            if (!IsRemoteScheduleConfigured() || string.IsNullOrWhiteSpace(user.UsosRefreshTokenProtected))
+            if (ShouldUseMockSchedule())
             {
-                if (_options.UseMockScheduleWhenNotConfigured)
-                {
-                    remoteEvents = BuildMockSchedule();
-                }
-                else
-                {
-                    throw new UsosAuthorizationRequiredException("USOS authorization required.");
-                }
+                remoteEvents = BuildMockSchedule();
+            }
+            else if (!IsRemoteScheduleConfigured() || string.IsNullOrWhiteSpace(user.UsosRefreshTokenProtected))
+            {
+                throw new UsosAuthorizationRequiredException("USOS authorization required.");
             }
             else
             {
@@ -453,6 +450,36 @@ namespace StudentPlanner.Api.Services
         {
             return IsOAuthConfigured()
                    && !string.IsNullOrWhiteSpace(_options.ScheduleEndpoint);
+        }
+
+        private bool ShouldUseMockSchedule()
+        {
+            if (!_options.UseMockScheduleWhenNotConfigured)
+            {
+                return false;
+            }
+
+            return HasPlaceholderEndpoint(_options.AuthorizationEndpoint)
+                   || HasPlaceholderEndpoint(_options.TokenEndpoint)
+                   || HasPlaceholderEndpoint(_options.ScheduleEndpoint)
+                   || string.IsNullOrWhiteSpace(_options.ClientId)
+                   || string.IsNullOrWhiteSpace(_options.ClientSecret);
+        }
+
+        private static bool HasPlaceholderEndpoint(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return true;
+            }
+
+            if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            {
+                return true;
+            }
+
+            var host = uri.Host.ToLowerInvariant();
+            return host.Contains("example.edu") || host.Contains("example.com") || host.Contains("example.org");
         }
 
         private static string? TryGetString(JsonElement element, params string[] names)
