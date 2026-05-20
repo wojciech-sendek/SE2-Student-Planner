@@ -91,3 +91,15 @@ export async function createEventRequest(payload) {
 export async function fetchEventRequestsByFaculty(facultyId) {
   return authedFetch(`${EVENT_REQUESTS_PATH}/faculty?facultyId=${facultyId}`)
 }
+
+const MANAGER_ACADEMIC_EVENTS_PATH = '/api/manager/academic-events'
+
+export async function fetchManagerAcademicEvents({ from, to } = {}) {
+  const params = new URLSearchParams()
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+  const query = params.toString()
+  const path = query ? `${MANAGER_ACADEMIC_EVENTS_PATH}?${query}` : MANAGER_ACADEMIC_EVENTS_PATH
+  const data = await authedFetch(path)
+  return Array.isArray(data) ? data : []
+}
