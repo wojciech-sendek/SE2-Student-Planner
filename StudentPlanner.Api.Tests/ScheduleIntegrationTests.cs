@@ -88,4 +88,20 @@ public class ScheduleIntegrationTests : IClassFixture<StudentPlannerApiFactory>
         eventList[2].Title.Should().Be("Personal 2");
         eventList[2].IsPersonal.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task GetSchedule_ReturnsOk_WhenAuthenticatedAsManager()
+    {
+        // Arrange
+        var userId = "manager-schedule-user";
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Test", userId);
+        _client.DefaultRequestHeaders.Remove("X-Test-Roles");
+        _client.DefaultRequestHeaders.Add("X-Test-Roles", "Manager");
+
+        // Act
+        var response = await _client.GetAsync("/api/Schedule");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+    }
 }

@@ -24,11 +24,17 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
 
         var userId = authHeader["Test ".Length..];
 
-        var claims = new[]
+        var roles = Request.Headers.TryGetValue("X-Test-Roles", out var roleHeader)
+            ? roleHeader.ToString()
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            : new[] { "User" };
+
+        var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, userId),
-            new Claim(ClaimTypes.Role, "User")
+            new(ClaimTypes.NameIdentifier, userId)
         };
+        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+
         var identity = new ClaimsIdentity(claims, "Test");
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, "Test");

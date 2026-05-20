@@ -94,7 +94,7 @@ namespace StudentPlanner.Api
             builder.Services.AddScoped<IManagerEventRequestService, ManagerEventRequestService>();
             builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
-            builder.Services.AddHttpClient<IUsosService, UsosService>();
+            builder.Services.AddScoped<IUsosService, MockUsosService>();
 
             var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
             var corsOrigins = configuredOrigins is { Length: > 0 }

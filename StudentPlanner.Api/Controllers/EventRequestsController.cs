@@ -83,6 +83,52 @@ namespace StudentPlanner.Api.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<ActionResult<EventRequestDto>> SubmitRequest([FromBody] SubmitEventRequestDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return ValidationProblem(ModelState);
+            }
+
+            switch (dto.RequestType)
+            {
+                case 0:
+                    var createDto = MapCreateRequest(dto);
+                    if (!TryValidateModel(createDto))
+                    {
+                        return ValidationProblem(ModelState);
+                    }
+
+                    return await SubmitCreateRequest(createDto);
+
+                case 1:
+                    if (!dto.TargetEventId.HasValue)
+                    {
+                        return BadRequest(new { Message = "TargetEventId is required for update requests." });
+                    }
+
+                    var updateDto = MapUpdateRequest(dto);
+                    if (!TryValidateModel(updateDto))
+                    {
+                        return ValidationProblem(ModelState);
+                    }
+
+                    return await SubmitUpdateRequest(dto.TargetEventId.Value, updateDto);
+
+                case 2:
+                    if (!dto.TargetEventId.HasValue)
+                    {
+                        return BadRequest(new { Message = "TargetEventId is required for delete requests." });
+                    }
+
+                    return await SubmitDeleteRequest(dto.TargetEventId.Value, MapDeleteRequest(dto));
+
+                default:
+                    return BadRequest(new { Message = "RequestType must be 0 (create), 1 (update), or 2 (delete)." });
+            }
+        }
+
         [HttpPost("update/{academicEventId:int}")]
         public async Task<ActionResult<EventRequestDto>> SubmitUpdateRequest(
             int academicEventId,
@@ -153,6 +199,41 @@ namespace StudentPlanner.Api.Controllers
         private string? GetCurrentUserId()
         {
             return User.FindFirstValue(ClaimTypes.NameIdentifier);
+        }
+
+        private static CreateEventRequestDto MapCreateRequest(SubmitEventRequestDto dto)
+        {
+            var details = dto.Details;
+
+            return new CreateEventRequestDto
+            {
+                Title = details?.Title ?? string.Empty,
+                StartTime = details?.StartTime ?? default,
+                EndTime = details?.EndTime ?? default,
+                Location = details?.Location,
+                FacultyId = dto.FacultyId
+            };
+        }
+
+        private static UpdateEventRequestDto MapUpdateRequest(SubmitEventRequestDto dto)
+        {
+            var details = dto.Details;
+
+            return new UpdateEventRequestDto
+            {
+                Title = details?.Title ?? string.Empty,
+                StartTime = details?.StartTime ?? default,
+                EndTime = details?.EndTime ?? default,
+                Location = details?.Location
+            };
+        }
+
+        private static DeleteEventRequestDto MapDeleteRequest(SubmitEventRequestDto dto)
+        {
+            return new DeleteEventRequestDto
+            {
+                Reason = dto.Reason ?? dto.Details?.Description
+            };
         }
     }
 }

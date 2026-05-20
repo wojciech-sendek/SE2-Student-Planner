@@ -7,16 +7,31 @@ import { HttpError, extractErrorMessages } from '../api/httpError.js'
 import { clearAuth, getToken } from '../lib/authStorage.js'
 import EventRequestFormModal from '../components/EventRequestFormModal.jsx'
 
-const REQUEST_TYPE = {
-  0: 'CREATE',
-  1: 'UPDATE',
-  2: 'DELETE',
+function normalizeLabel(value) {
+  return String(value ?? '').trim().toLowerCase()
 }
 
-const REQUEST_STATUS = {
-  0: 'PENDING',
-  1: 'APPROVED',
-  2: 'REJECTED',
+function getRequestTypeLabel(req) {
+  return req.requestType ?? req.RequestType ?? ''
+}
+
+function getRequestStatusLabel(req) {
+  return req.requestStatus ?? req.status ?? req.Status ?? ''
+}
+
+function getTypeBadgeClass(type) {
+  const normalized = normalizeLabel(type)
+  if (normalized === 'create') return 'bg-emerald-100 text-emerald-800'
+  if (normalized === 'update') return 'bg-amber-100 text-amber-800'
+  if (normalized === 'delete') return 'bg-red-100 text-red-800'
+  return 'bg-slate-100 text-slate-800'
+}
+
+function getStatusBadgeClass(status) {
+  const normalized = normalizeLabel(status)
+  if (normalized === 'approved') return 'bg-emerald-100 text-emerald-800'
+  if (normalized === 'rejected') return 'bg-red-100 text-red-800'
+  return 'bg-slate-100 text-slate-800'
 }
 
 function getRequestErrorMessage(error, fallbackMessage) {
@@ -163,29 +178,21 @@ export default function ManagerDashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {requests.map(req => {
-                      const typeLabel = REQUEST_TYPE[req.requestType] || req.requestType
-                      const statusLabel = REQUEST_STATUS[req.requestStatus] || req.requestStatus
+                      const typeLabel = getRequestTypeLabel(req)
+                      const statusLabel = getRequestStatusLabel(req)
                       const date = req.submissionDate ? new Date(req.submissionDate).toLocaleDateString() : ''
                       return (
                         <tr key={req.requestId || req.id} className="hover:bg-slate-50/50">
                           <td className="px-4 py-3 font-medium text-slate-900">
-                            {req.details?.title ?? '(Unknown)'}
+                            {req.details?.title ?? req.title ?? '(Unknown)'}
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                              typeLabel === 'CREATE' ? 'bg-emerald-100 text-emerald-800' :
-                              typeLabel === 'UPDATE' ? 'bg-amber-100 text-amber-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getTypeBadgeClass(typeLabel)}`}>
                               {typeLabel}
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                              statusLabel === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
-                              statusLabel === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                              'bg-slate-100 text-slate-800'
-                            }`}>
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${getStatusBadgeClass(statusLabel)}`}>
                               {statusLabel}
                             </span>
                           </td>

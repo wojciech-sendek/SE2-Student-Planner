@@ -29,6 +29,12 @@ export function extractErrorMessages(body) {
       .map(String)
   }
   const m = body.message ?? body.Message ?? body.title ?? body.Title
-  if (typeof m === 'string' && m.trim()) return [m.trim()]
+  if (typeof m === 'string' && m.trim()) {
+    const trimmed = m.trim()
+    if (/^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed) || /502 Bad Gateway/i.test(trimmed)) {
+      return ['Server error. Check whether the API container is running and reachable.']
+    }
+    return [trimmed]
+  }
   return []
 }

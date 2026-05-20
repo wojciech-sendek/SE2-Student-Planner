@@ -122,6 +122,21 @@ namespace StudentPlanner.Api.Data
                 }
 
                 await userManager.UpdateAsync(managerUser);
+
+                if (!await dbContext.PersonalEvents.AnyAsync(e =>
+                        e.UserId == managerUser.Id && e.Title == "Manager planning review"))
+                {
+                    dbContext.PersonalEvents.Add(new PersonalEvent
+                    {
+                        Title = "Manager planning review",
+                        StartTime = DateTime.UtcNow.Date.AddDays(1).AddHours(11),
+                        EndTime = DateTime.UtcNow.Date.AddDays(1).AddHours(12),
+                        Location = "MATH-201",
+                        UserId = managerUser.Id
+                    });
+
+                    await dbContext.SaveChangesAsync();
+                }
             }
 
             if (!await dbContext.AcademicEvents.AnyAsync())
