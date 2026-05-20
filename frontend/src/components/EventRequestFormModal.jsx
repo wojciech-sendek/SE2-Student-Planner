@@ -43,55 +43,6 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
     description: '',
   })
   const [facultyId, setFacultyId] = useState(faculties?.[0]?.id ?? '')
-  
-  const [form, setForm] = useState({
-    title: '',
-    startDate: '',
-    startTime: '',
-    endDate: '',
-    endTime: '',
-    location: '',
-    description: '',
-  })
-
-  const [openTimeMenu, setOpenTimeMenu] = useState(null)
-  const startTimeInputRef = useRef(null)
-  const endTimeInputRef = useRef(null)
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
-
-  function openNativeTimePicker(input) {
-    if (!input) return false
-    input.focus()
-    if (typeof input.showPicker === 'function') {
-      try {
-        input.showPicker()
-        return true
-      } catch {
-        return false
-      }
-    }
-    return false
-  }
-
-  function handleDateChange(e, nextPickerRef, menuKey) {
-    handleChange(e)
-    setOpenTimeMenu(menuKey)
-    openNativeTimePicker(nextPickerRef.current)
-  }
-
-  function openTimePicker(ref, menuKey) {
-    setOpenTimeMenu(prev => (prev === menuKey ? null : menuKey))
-    openNativeTimePicker(ref.current)
-  }
-
-  function setTimeValue(name, value) {
-    setForm(prev => ({ ...prev, [name]: value }))
-    setOpenTimeMenu(null)
-  }
 
   const needsTargetEvent = Number(requestType) === 1 || Number(requestType) === 2
   const needsEventDetails = Number(requestType) === 0 || Number(requestType) === 1
