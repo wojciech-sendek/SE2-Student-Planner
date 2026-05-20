@@ -1,9 +1,47 @@
-import React, { useState, useRef } from 'react'
-import { combineDateTime, TIME_OPTIONS } from '../lib/formUtils'
+import { useEffect, useState } from 'react'
+import { fetchManagerAcademicEvents } from '../api/eventsApi.js'
+import DateTimeRangeFields from './DateTimeRangeFields.jsx'
+import { combineDateTime, splitDatetimeLocal, toDatetimeLocal } from '../lib/dateTimeFormUtils.js'
+
+function formatEventWhen(startTime, endTime) {
+  const start = new Date(startTime)
+  const end = new Date(endTime)
+  if (Number.isNaN(start.getTime())) return ''
+  const datePart = start.toLocaleDateString()
+  const timePart = `${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+  return `${datePart}, ${timePart}`
+}
+
+function applyEventToForm(event, setForm) {
+  const start = splitDatetimeLocal(toDatetimeLocal(event.startTime))
+  const end = splitDatetimeLocal(toDatetimeLocal(event.endTime))
+  setForm(prev => ({
+    ...prev,
+    title: event.title ?? '',
+    startDate: start.date,
+    startTime: start.time,
+    endDate: end.date,
+    endTime: end.time,
+    location: event.location ?? '',
+  }))
+}
 
 export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
-  const [requestType, setRequestType] = useState(0) // 0=CREATE, 1=UPDATE, 2=DELETE
-  const [targetEventId, setTargetEventId] = useState('')
+  const [requestType, setRequestType] = useState(0)
+  const [targetEventId, setTargetEventId] = useState(null)
+  const [academicEvents, setAcademicEvents] = useState([])
+  const [eventsLoading, setEventsLoading] = useState(false)
+  const [eventsError, setEventsError] = useState(null)
+  const [validationError, setValidationError] = useState(null)
+  const [form, setForm] = useState({
+    title: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    location: '',
+    description: '',
+  })
   const [facultyId, setFacultyId] = useState(faculties?.[0]?.id ?? '')
   
   const [form, setForm] = useState({
@@ -55,28 +93,110 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
     setOpenTimeMenu(null)
   }
 
+  const needsTargetEvent = Number(requestType) === 1 || Number(requestType) === 2
+  const needsEventDetails = Number(requestType) === 0 || Number(requestType) === 1
+
+  useEffect(() => {
+    if (!needsTargetEvent) return
+
+    let cancelled = false
+    setEventsLoading(true)
+    setEventsError(null)
+
+    ;(async () => {
+      try {
+        const events = await fetchManagerAcademicEvents()
+        if (!cancelled) setAcademicEvents(events)
+      } catch {
+        if (!cancelled) {
+          setAcademicEvents([])
+          setEventsError('Could not load academic events.')
+        }
+      } finally {
+        if (!cancelled) setEventsLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [needsTargetEvent])
+
+  function handleFieldChange(name, value) {
+    setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  function handleRequestTypeChange(value) {
+    setRequestType(value)
+    setTargetEventId(null)
+    setValidationError(null)
+    if (Number(value) === 0) {
+      setForm({
+        title: '',
+        startDate: '',
+        startTime: '',
+        endDate: '',
+        endTime: '',
+        location: '',
+        description: '',
+      })
+    }
+  }
+
+  function handleSelectTargetEvent(event) {
+    const id = event.id ?? event.Id
+    setTargetEventId(id)
+    setValidationError(null)
+    if (Number(requestType) === 1) {
+      applyEventToForm(event, setForm)
+    }
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
-    
+    setValidationError(null)
+
     const payload = {
       requestType: Number(requestType),
       facultyId: Number(facultyId),
     }
 
-    if (payload.requestType === 1 || payload.requestType === 2) {
-      payload.targetEventId = targetEventId
+    if (needsTargetEvent) {
+      if (targetEventId == null) {
+        setValidationError('Select an event to update or delete.')
+        return
+      }
+      payload.targetEventId = Number(targetEventId)
     }
 
-    if (payload.requestType === 0 || payload.requestType === 1) {
-      const startDT = combineDateTime(form.startDate, form.startTime)
-      const endDT = combineDateTime(form.endDate, form.endTime)
+    if (needsEventDetails) {
+      const startDateTime = combineDateTime(form.startDate, form.startTime)
+      const endDateTime = combineDateTime(form.endDate, form.endTime)
+      if (!form.title.trim()) {
+        setValidationError('Title is required.')
+        return
+      }
+      if (!startDateTime || !endDateTime) {
+        setValidationError('Start and end date and time are required.')
+        return
+      }
+      const startDate = new Date(startDateTime)
+      const endDate = new Date(endDateTime)
+      if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+        setValidationError('Please provide valid start and end times.')
+        return
+      }
+      if (endDate <= startDate) {
+        setValidationError('End time must be after start time.')
+        return
+      }
 
       payload.details = {
-        title: form.title,
-        startTime: startDT ? new Date(startDT).toISOString() : null,
-        endTime: endDT ? new Date(endDT).toISOString() : null,
-        location: form.location,
-        description: form.description,
+        title: form.title.trim(),
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
+        location: form.location.trim(),
+        description: form.description.trim(),
       }
     }
 
@@ -84,196 +204,130 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
-        <div className="border-b border-slate-200 px-6 py-4">
-          <h2 className="text-lg font-bold text-slate-900">New Event Request</h2>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+        <h2 className="mb-6 text-xl font-bold text-slate-900">New Event Request</h2>
+        <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+          {validationError && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              {validationError}
+            </p>
+          )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Faculty</label>
-              <select
-                value={facultyId}
-                onChange={e => setFacultyId(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                required
-              >
-                {faculties?.map(f => (
-                  <option key={f.id} value={f.id}>{f.displayName}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Request Type</label>
-              <select
-                value={requestType}
-                onChange={e => setRequestType(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value={0}>Create</option>
-                <option value={1}>Update</option>
-                <option value={2}>Delete</option>
-              </select>
-            </div>
+          <div>
+            <label className="mb-1 block font-medium text-slate-700">Faculty</label>
+            <select
+              value={facultyId}
+              onChange={e => setFacultyId(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              required
+            >
+              {faculties?.map(f => (
+                <option key={f.id} value={f.id}>{f.displayName}</option>
+              ))}
+            </select>
           </div>
 
-          {(Number(requestType) === 1 || Number(requestType) === 2) && (
+          <div>
+            <label className="mb-1 block font-medium text-slate-700">Request Type</label>
+            <select
+              value={requestType}
+              onChange={e => handleRequestTypeChange(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value={0}>Create</option>
+              <option value={1}>Update</option>
+              <option value={2}>Delete</option>
+            </select>
+          </div>
+
+          {needsTargetEvent && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Target Event ID</label>
-              <input
-                type="text"
-                value={targetEventId}
-                onChange={e => setTargetEventId(e.target.value)}
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+              <label className="mb-1.5 block font-medium text-slate-700">
+                Target event <span className="text-red-500">*</span>
+              </label>
+              {eventsLoading ? (
+                <p className="text-sm text-slate-500">Loading events…</p>
+              ) : eventsError ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                  {eventsError}
+                </p>
+              ) : academicEvents.length === 0 ? (
+                <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  No academic events available for your faculty.
+                </p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100">
+                  {academicEvents.map(event => {
+                    const id = event.id ?? event.Id
+                    const selected = targetEventId === id
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleSelectTargetEvent(event)}
+                        className={`w-full px-3 py-2.5 text-left transition-colors hover:bg-slate-50 ${
+                          selected ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-500' : ''
+                        }`}
+                      >
+                        <div className="font-medium text-slate-900">{event.title}</div>
+                        <div className="mt-0.5 text-xs text-slate-500">
+                          {formatEventWhen(event.startTime, event.endTime)}
+                          {event.location ? ` · ${event.location}` : ''}
+                          {event.facultyDisplayName ? ` · ${event.facultyDisplayName}` : ''}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 
-          {(Number(requestType) === 0 || Number(requestType) === 1) && (
+          {needsEventDetails && (
             <>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
+                <label className="mb-1 block font-medium text-slate-700">
                   Title <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="title"
                   value={form.title}
-                  onChange={handleChange}
+                  onChange={e => handleFieldChange('title', e.target.value)}
                   required
                   placeholder="Event title"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    Start <span className="text-red-500">*</span>
-                  </label>
-                  <div className="space-y-2">
-                    <input
-                      type="date"
-                      name="startDate"
-                      value={form.startDate}
-                      onChange={e => handleDateChange(e, startTimeInputRef, 'start')}
-                      required
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                    <div className="relative">
-                      <input
-                        ref={startTimeInputRef}
-                        type="time"
-                        name="startTime"
-                        value={form.startTime}
-                        onChange={handleChange}
-                        required
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => openTimePicker(startTimeInputRef, 'start')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        🕒
-                      </button>
-                      {openTimeMenu === 'start' && (
-                        <div className="absolute left-0 top-full z-30 mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                          {TIME_OPTIONS.map(option => (
-                            <button
-                              key={option}
-                              type="button"
-                              onMouseDown={e => {
-                                e.preventDefault()
-                                setTimeValue('startTime', option)
-                              }}
-                              className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    End <span className="text-red-500">*</span>
-                  </label>
-                  <div className="space-y-2">
-                    <input
-                      type="date"
-                      name="endDate"
-                      value={form.endDate}
-                      onChange={e => handleDateChange(e, endTimeInputRef, 'end')}
-                      required
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                    <div className="relative">
-                      <input
-                        ref={endTimeInputRef}
-                        type="time"
-                        name="endTime"
-                        value={form.endTime}
-                        onChange={handleChange}
-                        required
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-10 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => openTimePicker(endTimeInputRef, 'end')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                      >
-                        🕒
-                      </button>
-                      {openTimeMenu === 'end' && (
-                        <div className="absolute left-0 top-full z-30 mt-1 max-h-44 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
-                          {TIME_OPTIONS.map(option => (
-                            <button
-                              key={option}
-                              type="button"
-                              onMouseDown={e => {
-                                e.preventDefault()
-                                setTimeValue('endTime', option)
-                              }}
-                              className="block w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100"
-                            >
-                              {option}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <DateTimeRangeFields
+                startDate={form.startDate}
+                startTime={form.startTime}
+                endDate={form.endDate}
+                endTime={form.endTime}
+                onFieldChange={handleFieldChange}
+              />
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Location</label>
+                <label className="mb-1 block font-medium text-slate-700">Location</label>
                 <input
                   type="text"
                   name="location"
                   value={form.location}
-                  onChange={handleChange}
-                  placeholder="Optional location"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  onChange={e => handleFieldChange('location', e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Description</label>
+                <label className="mb-1 block font-medium text-slate-700">Description</label>
                 <textarea
                   name="description"
                   value={form.description}
-                  onChange={handleChange}
-                  rows="3"
-                  placeholder="Optional description"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  onChange={e => handleFieldChange('description', e.target.value)}
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
             </>
