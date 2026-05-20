@@ -11,6 +11,9 @@ namespace StudentPlanner.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.Sql("IF OBJECT_ID('EventRequests', 'U') IS NOT NULL DROP TABLE EventRequests;");
+            migrationBuilder.Sql("IF OBJECT_ID('AcademicEvents', 'U') IS NOT NULL DROP TABLE AcademicEvents;");
+
             migrationBuilder.CreateTable(
                 name: "AcademicEvents",
                 columns: table => new

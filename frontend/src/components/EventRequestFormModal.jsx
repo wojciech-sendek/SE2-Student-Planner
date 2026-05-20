@@ -43,6 +43,55 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
     description: '',
   })
   const [facultyId, setFacultyId] = useState(faculties?.[0]?.id ?? '')
+  
+  const [form, setForm] = useState({
+    title: '',
+    startDate: '',
+    startTime: '',
+    endDate: '',
+    endTime: '',
+    location: '',
+    description: '',
+  })
+
+  const [openTimeMenu, setOpenTimeMenu] = useState(null)
+  const startTimeInputRef = useRef(null)
+  const endTimeInputRef = useRef(null)
+
+  function handleChange(e) {
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
+  }
+
+  function openNativeTimePicker(input) {
+    if (!input) return false
+    input.focus()
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker()
+        return true
+      } catch {
+        return false
+      }
+    }
+    return false
+  }
+
+  function handleDateChange(e, nextPickerRef, menuKey) {
+    handleChange(e)
+    setOpenTimeMenu(menuKey)
+    openNativeTimePicker(nextPickerRef.current)
+  }
+
+  function openTimePicker(ref, menuKey) {
+    setOpenTimeMenu(prev => (prev === menuKey ? null : menuKey))
+    openNativeTimePicker(ref.current)
+  }
+
+  function setTimeValue(name, value) {
+    setForm(prev => ({ ...prev, [name]: value }))
+    setOpenTimeMenu(null)
+  }
 
   const needsTargetEvent = Number(requestType) === 1 || Number(requestType) === 2
   const needsEventDetails = Number(requestType) === 0 || Number(requestType) === 1
@@ -247,7 +296,8 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
                   value={form.title}
                   onChange={e => handleFieldChange('title', e.target.value)}
                   required
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  placeholder="Event title"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
 
@@ -283,19 +333,19 @@ export default function EventRequestFormModal({ faculties, onSave, onCancel }) {
             </>
           )}
 
-          <div className="mt-6 flex justify-end gap-3 pt-2">
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              className="flex-1 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            >
+              Submit Request
+            </button>
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-lg px-4 py-2 font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white transition-colors hover:bg-indigo-700"
-            >
-              Submit Request
             </button>
           </div>
         </form>
