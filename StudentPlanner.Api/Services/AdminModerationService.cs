@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using StudentPlanner.Api.Data;
 using StudentPlanner.Api.Dtos.EventRequests;
 using StudentPlanner.Api.Entities;
-using StudentPlanner.Api.Entities.Enums;
 using StudentPlanner.Api.Services.Interfaces;
 
 namespace StudentPlanner.Api.Services
@@ -85,7 +84,7 @@ namespace StudentPlanner.Api.Services
 
             if (newStatus == EventRequestStatus.Approved)
             {
-                ApplyApprovedRequest(request);
+                await ApplyApprovedRequestAsync(request);
             }
 
             await _dbContext.SaveChangesAsync();
@@ -94,7 +93,7 @@ namespace StudentPlanner.Api.Services
             return ToEventRequestDto(request);
         }
 
-        private void ApplyApprovedRequest(EventRequest request)
+        private async Task ApplyApprovedRequestAsync(EventRequest request)
         {
             switch (request.RequestType)
             {
@@ -129,8 +128,21 @@ namespace StudentPlanner.Api.Services
                     }
 
                     var target = request.TargetAcademicEvent;
-                    request.TargetAcademicEvent = null;
-                    request.TargetAcademicEventId = null;
+                    var targetEventId = target.Id;
+
+                    var requestsPointingToDeletedEvent = await _dbContext.EventRequests
+                        .Where(r => r.TargetAcademicEventId == targetEventId)
+                        .ToListAsync();
+
+                    foreach (var relatedRequest in requestsPointingToDeletedEvent)
+                    {
+                        relatedRequest.TargetAcademicEvent = null;
+                        relatedRequest.TargetAcademicEventId = null;
+                    }
+
+                    // Flush FK nulling first, otherwise SQL Server blocks deleting AcademicEvent.
+                    await _dbContext.SaveChangesAsync();
+
                     _dbContext.AcademicEvents.Remove(target);
                     break;
 

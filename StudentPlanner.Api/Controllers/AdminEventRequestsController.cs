@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentPlanner.Api.Dtos.Admin;
 using StudentPlanner.Api.Dtos.EventRequests;
-using StudentPlanner.Api.Entities.Enums;
+using StudentPlanner.Api.Entities;
 using StudentPlanner.Api.Services.Interfaces;
 
 namespace StudentPlanner.Api.Controllers

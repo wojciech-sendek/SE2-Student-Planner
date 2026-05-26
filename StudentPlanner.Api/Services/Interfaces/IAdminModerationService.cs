@@ -1,5 +1,5 @@
 using StudentPlanner.Api.Dtos.EventRequests;
-using StudentPlanner.Api.Entities.Enums;
+using StudentPlanner.Api.Entities;
 
 namespace StudentPlanner.Api.Services.Interfaces
 {
