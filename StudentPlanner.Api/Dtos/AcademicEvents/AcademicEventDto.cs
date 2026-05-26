@@ -12,5 +12,7 @@ namespace StudentPlanner.Api.Dtos.AcademicEvents
         public string FacultyDisplayName { get; set; } = null!;
         public string Source { get; set; } = "faculty";
         public bool IsReadOnly { get; set; } = true;
+        public bool IsSubscribed { get; set; }
+        public int SubscriberCount { get; set; }
     }
 }
