@@ -115,6 +115,25 @@ namespace StudentPlanner.Api.Data
                     .HasForeignKey(e => e.FacultyId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                entity.HasMany(e => e.Subscribers)
+                    .WithMany(u => u.SubscribedAcademicEvents)
+                    .UsingEntity<Dictionary<string, object>>(
+                        "AcademicEventSubscriptions",
+                        right => right.HasOne<ApplicationUser>()
+                            .WithMany()
+                            .HasForeignKey("UserId")
+                            .OnDelete(DeleteBehavior.Cascade),
+                        left => left.HasOne<AcademicEvent>()
+                            .WithMany()
+                            .HasForeignKey("AcademicEventId")
+                            .OnDelete(DeleteBehavior.Cascade),
+                        join =>
+                        {
+                            join.ToTable("AcademicEventSubscriptions");
+                            join.HasKey("AcademicEventId", "UserId");
+                            join.HasIndex("UserId");
+                        });
+
                 entity.HasIndex(e => new { e.FacultyId, e.StartTime });
             });
 

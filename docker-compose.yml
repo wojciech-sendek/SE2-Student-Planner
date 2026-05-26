@@ -4,15 +4,18 @@
     container_name: student-planner-db
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=YourStrongPassword!123
-      - MSSQL_PID=Developer
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD:-YourStrongPassword!123}
+      - MSSQL_PID=${MSSQL_PID:-Developer}
     ports:
-      - "1433:1433"
+      - "${MSSQL_PORT:-1433}:1433"
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'YourStrongPassword!123' -Q 'SELECT 1' -C"]
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1' -C"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
+    volumes:
+      - mssql-data:/var/opt/mssql
     networks:
       - student-planner-net
 
@@ -27,12 +30,18 @@
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Server=database;Database=StudentPlannerDb;User Id=sa;Password=YourStrongPassword!123;TrustServerCertificate=True;
+      - ConnectionStrings__DefaultConnection=Server=database;Database=${MSSQL_DATABASE:-StudentPlannerDb};User Id=sa;Password=${MSSQL_SA_PASSWORD:-YourStrongPassword!123};TrustServerCertificate=True;
       - Cors__Origins=["http://localhost:5173", "http://localhost"]
       - Smtp__Host=mailpit
       - Smtp__Port=1025
     ports:
-      - "5289:8080"
+      - "${API_PORT:-5289}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks:
       - student-planner-net
 
@@ -42,20 +51,24 @@
       dockerfile: frontend/Dockerfile
     container_name: student-planner-web
     ports:
-      - "5173:80"
+      - "${FRONTEND_PORT:-5173}:80"
     networks:
       - student-planner-net
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
   mailpit:
     image: axllent/mailpit
     container_name: student-planner-mailpit
     ports:
-      - "1025:1025" # SMTP port
-      - "8025:8025" # Web UI
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
     networks:
       - student-planner-net
+
+volumes:
+  mssql-data:
 
 networks:
   student-planner-net:

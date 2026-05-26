@@ -92,6 +92,9 @@ namespace StudentPlanner.Api
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
             builder.Services.AddScoped<IManagerEventRequestService, ManagerEventRequestService>();
+            builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
+            builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+            builder.Services.AddScoped<IAcademicEventSubscriptionService, AcademicEventSubscriptionService>();
             builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
             builder.Services.AddScoped<IUsosService, MockUsosService>();

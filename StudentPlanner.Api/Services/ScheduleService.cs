@@ -24,51 +24,68 @@ namespace StudentPlanner.Api.Services
                 .AsNoTracking()
                 .Where(e => e.UserId == userId);
 
+            var academicQuery = _dbContext.AcademicEvents
+                .AsNoTracking()
+                .Where(e => e.Subscribers.Any(subscriber => subscriber.Id == userId));
+
             if (from.HasValue)
             {
                 personalQuery = personalQuery.Where(e => e.EndTime >= from.Value);
                 usosQuery = usosQuery.Where(e => e.EndTime >= from.Value);
+                academicQuery = academicQuery.Where(e => e.EndTime >= from.Value);
             }
 
             if (to.HasValue)
             {
                 personalQuery = personalQuery.Where(e => e.StartTime <= to.Value);
                 usosQuery = usosQuery.Where(e => e.StartTime <= to.Value);
+                academicQuery = academicQuery.Where(e => e.StartTime <= to.Value);
             }
 
-            var personalEvents = await personalQuery
-                .Select(e => new EventDto
-                {
-                    Id = e.Id,
-                    Title = e.Title,
-                    StartTime = e.StartTime,
-                    EndTime = e.EndTime,
-                    Location = e.Location,
-                    EventType = "personal",
-                    IsPersonal = true,
-                    Room = null,
-                    Teacher = null
-                })
-                .ToListAsync();
+            var personalEventsQuery = personalQuery.Select(e => new EventDto
+            {
+                Id = e.Id,
+                Title = e.Title,
+                StartTime = e.StartTime,
+                EndTime = e.EndTime,
+                Location = e.Location,
+                EventType = "personal",
+                IsPersonal = true,
+                Room = null,
+                Teacher = null
+            });
 
-            var usosEvents = await usosQuery
-                .Select(e => new EventDto
-                {
-                    Id = e.Id,
-                    Title = e.Title,
-                    StartTime = e.StartTime,
-                    EndTime = e.EndTime,
-                    Location = e.Location,
-                    EventType = "usos",
-                    IsPersonal = false,
-                    Room = e.Room,
-                    Teacher = e.Teacher
-                })
-                .ToListAsync();
+            var usosEventsQuery = usosQuery.Select(e => new EventDto
+            {
+                Id = e.Id,
+                Title = e.Title,
+                StartTime = e.StartTime,
+                EndTime = e.EndTime,
+                Location = e.Location,
+                EventType = "usos",
+                IsPersonal = false,
+                Room = e.Room,
+                Teacher = e.Teacher
+            });
 
-            return personalEvents.Concat(usosEvents)
+            var subscribedAcademicEventsQuery = academicQuery.Select(e => new EventDto
+            {
+                Id = e.Id,
+                Title = e.Title,
+                StartTime = e.StartTime,
+                EndTime = e.EndTime,
+                Location = e.Location,
+                EventType = "academic",
+                IsPersonal = false,
+                Room = null,
+                Teacher = null
+            });
+
+            return await personalEventsQuery
+                .Concat(usosEventsQuery)
+                .Concat(subscribedAcademicEventsQuery)
                 .OrderBy(e => e.StartTime)
-                .ToList();
+                .ToListAsync();
         }
     }
 }
