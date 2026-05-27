@@ -4,22 +4,12 @@ import { fetchCurrentUser } from '../api/authApi.js'
 import { HttpError } from '../api/httpError.js'
 import { clearAuth, getToken } from '../lib/authStorage.js'
 
-function getHomePath(roles) {
-  if (roles.includes('Admin') && !roles.includes('User')) {
-    return '/admin-dashboard'
-  }
-  if (roles.includes('Manager') && !roles.includes('User') && !roles.includes('Admin')) {
-    return '/manager-dashboard'
-  }
-  return '/app'
-}
-
-export default function RootRedirect() {
-  const [target, setTarget] = useState(null)
+export default function RoleProtectedRoute({ children, role }) {
+  const [access, setAccess] = useState('loading')
 
   useEffect(() => {
     if (!getToken()) {
-      setTarget('/login')
+      setAccess('unauthorized')
       return
     }
 
@@ -28,14 +18,16 @@ export default function RootRedirect() {
       try {
         const user = await fetchCurrentUser()
         const roles = user?.roles ?? user?.Roles ?? []
-        if (!cancelled) setTarget(getHomePath(roles))
+        if (!cancelled) {
+          setAccess(roles.includes(role) ? 'allowed' : 'forbidden')
+        }
       } catch (e) {
         if (!cancelled) {
           if (e instanceof HttpError && e.status === 401) {
             clearAuth()
-            setTarget('/login')
+            setAccess('unauthorized')
           } else {
-            setTarget('/app')
+            setAccess('forbidden')
           }
         }
       }
@@ -44,9 +36,9 @@ export default function RootRedirect() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [role])
 
-  if (!target) {
+  if (access === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 text-sm text-slate-500">
         Loading…
@@ -54,5 +46,13 @@ export default function RootRedirect() {
     )
   }
 
-  return <Navigate to={target} replace />
+  if (access === 'unauthorized') {
+    return <Navigate to="/login" replace />
+  }
+
+  if (access === 'forbidden') {
+    return <Navigate to="/app" replace />
+  }
+
+  return children
 }

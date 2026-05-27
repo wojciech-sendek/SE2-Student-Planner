@@ -88,10 +88,6 @@ export async function createEventRequest(payload) {
   })
 }
 
-export async function fetchEventRequestsByFaculty(facultyId) {
-  return authedFetch(`${EVENT_REQUESTS_PATH}/faculty?facultyId=${facultyId}`)
-}
-
 const MANAGER_ACADEMIC_EVENTS_PATH = '/api/manager/academic-events'
 
 export async function fetchManagerAcademicEvents({ from, to } = {}) {

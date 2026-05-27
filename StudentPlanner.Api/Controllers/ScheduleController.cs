@@ -8,7 +8,7 @@ namespace StudentPlanner.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "User,Manager")]
+    [Authorize(Roles = "User,Manager,Admin")]
     public class ScheduleController : ControllerBase
     {
         private readonly IScheduleService _scheduleService;
@@ -30,7 +30,8 @@ namespace StudentPlanner.Api.Controllers
                 return Unauthorized();
             }
 
-            var events = await _scheduleService.GetScheduleAsync(userId, from, to);
+            var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+            var events = await _scheduleService.GetScheduleAsync(userId, roles, from, to);
 
             return Ok(events);
         }

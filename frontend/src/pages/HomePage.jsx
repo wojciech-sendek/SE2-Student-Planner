@@ -57,6 +57,22 @@ export default function HomePage() {
                 Manager Dashboard
               </Link>
             )}
+            {user?.roles?.includes('Admin') && (
+              <Link
+                to="/admin-dashboard"
+                className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-sm font-medium text-violet-700 transition-colors hover:bg-violet-100"
+              >
+                Admin Dashboard
+              </Link>
+            )}
+            {user?.roles?.includes('User') && (
+              <Link
+                to="/faculty-events"
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+              >
+                Faculty Events
+              </Link>
+            )}
             <Link
               to="/settings"
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"

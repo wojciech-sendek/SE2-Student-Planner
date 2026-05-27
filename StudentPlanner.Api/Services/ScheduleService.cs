@@ -1,12 +1,15 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using StudentPlanner.Api.Data;
 using StudentPlanner.Api.Dtos.Schedule;
+using StudentPlanner.Api.Entities;
 using StudentPlanner.Api.Services.Interfaces;
 
 namespace StudentPlanner.Api.Services
 {
     public class ScheduleService : IScheduleService
     {
+        private const string UniversityFacultyName = "university";
+
         private readonly ApplicationDbContext _dbContext;
 
         public ScheduleService(ApplicationDbContext dbContext)
@@ -14,7 +17,11 @@ namespace StudentPlanner.Api.Services
             _dbContext = dbContext;
         }
 
-        public async Task<IReadOnlyList<EventDto>> GetScheduleAsync(string userId, DateTime? from = null, DateTime? to = null)
+        public async Task<IReadOnlyList<EventDto>> GetScheduleAsync(
+            string userId,
+            IReadOnlyCollection<string> roles,
+            DateTime? from = null,
+            DateTime? to = null)
         {
             var personalQuery = _dbContext.PersonalEvents
                 .AsNoTracking()
@@ -24,9 +31,7 @@ namespace StudentPlanner.Api.Services
                 .AsNoTracking()
                 .Where(e => e.UserId == userId);
 
-            var academicQuery = _dbContext.AcademicEvents
-                .AsNoTracking()
-                .Where(e => e.Subscribers.Any(subscriber => subscriber.Id == userId));
+            var academicQuery = await BuildAcademicEventsQueryAsync(userId, roles);
 
             if (from.HasValue)
             {
@@ -68,7 +73,7 @@ namespace StudentPlanner.Api.Services
                 Teacher = e.Teacher
             });
 
-            var subscribedAcademicEventsQuery = academicQuery.Select(e => new EventDto
+            var academicEventsQuery = academicQuery.Select(e => new EventDto
             {
                 Id = e.Id,
                 Title = e.Title,
@@ -83,9 +88,36 @@ namespace StudentPlanner.Api.Services
 
             return await personalEventsQuery
                 .Concat(usosEventsQuery)
-                .Concat(subscribedAcademicEventsQuery)
+                .Concat(academicEventsQuery)
                 .OrderBy(e => e.StartTime)
                 .ToListAsync();
+        }
+
+        private async Task<IQueryable<AcademicEvent>> BuildAcademicEventsQueryAsync(
+            string userId,
+            IReadOnlyCollection<string> roles)
+        {
+            var query = _dbContext.AcademicEvents.AsNoTracking();
+
+            if (roles.Contains("Admin"))
+            {
+                return query;
+            }
+
+            if (roles.Contains("Manager"))
+            {
+                var facultyIds = await _dbContext.Users
+                    .AsNoTracking()
+                    .Where(u => u.Id == userId)
+                    .SelectMany(u => u.Faculties.Select(f => f.Id))
+                    .ToListAsync();
+
+                return query.Where(e =>
+                    facultyIds.Contains(e.FacultyId) ||
+                    e.Faculty.Name == UniversityFacultyName);
+            }
+
+            return query.Where(e => e.Subscribers.Any(subscriber => subscriber.Id == userId));
         }
     }
 }

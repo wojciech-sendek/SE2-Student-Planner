@@ -98,7 +98,7 @@ namespace StudentPlanner.Api.Services
             switch (request.RequestType)
             {
                 case EventRequestType.Create:
-                    request.TargetAcademicEvent = new AcademicEvent
+                    var createdEvent = new AcademicEvent
                     {
                         Title = request.Title,
                         StartTime = request.StartTime,
@@ -106,6 +106,8 @@ namespace StudentPlanner.Api.Services
                         Location = request.Location,
                         FacultyId = request.FacultyId
                     };
+                    _dbContext.AcademicEvents.Add(createdEvent);
+                    request.TargetAcademicEvent = createdEvent;
                     break;
 
                 case EventRequestType.Update:

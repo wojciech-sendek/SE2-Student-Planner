@@ -99,7 +99,7 @@ function getEventsForDay(events, date) {
 function eventChipClass(event) {
   if (event.isPersonal) return 'bg-indigo-500 hover:bg-indigo-600'
   const t = event.eventType.toLowerCase()
-  if (t.includes('faculty')) return 'bg-emerald-500 hover:bg-emerald-600'
+  if (t.includes('academic') || t.includes('faculty')) return 'bg-emerald-500 hover:bg-emerald-600'
   if (t.includes('usos') || t.includes('class')) return 'bg-amber-500 hover:bg-amber-600'
   return 'bg-slate-400 hover:bg-slate-500'
 }
@@ -146,6 +146,12 @@ export default function Calendar() {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
         window.location.assign('/login')
+        return
+      }
+      if (e instanceof HttpError && e.status === 403) {
+        setGlobalError(
+          'Your account cannot access the calendar. Use the Admin or Manager dashboard, or sign in with a student account.'
+        )
         return
       }
       setGlobalError(getRequestErrorMessage(e, 'Could not load events'))
