@@ -29,6 +29,14 @@ namespace StudentPlanner.Api.Services
                 return;
             }
 
+            // Sprint 6 strict mode:
+            // Realtime notifications are sent only when Admin approves a faculty event.
+            // To restore manager notifications for rejected requests, comment out this block.
+            if (!reviewNotification.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
             var managerNotification = BuildManagerNotification(reviewNotification);
 
             await _hubContext.Clients.User(reviewNotification.ManagerId)
@@ -36,11 +44,6 @@ namespace StudentPlanner.Api.Services
 
             await _hubContext.Clients.User(reviewNotification.ManagerId)
                 .SendAsync("EventRequestReviewed", reviewNotification);
-
-            if (!reviewNotification.Status.Equals("Approved", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
 
             var userRecipientIds = reviewNotification.UserRecipientIds
                 .Where(userId => !string.IsNullOrWhiteSpace(userId))
