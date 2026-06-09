@@ -1,12 +1,14 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using StudentPlanner.Api.Configurations;
 using StudentPlanner.Api.Data;
 using StudentPlanner.Api.Entities;
+using StudentPlanner.Api.Hubs;
 using StudentPlanner.Api.Services;
 using StudentPlanner.Api.Services.Interfaces;
 
@@ -83,6 +85,23 @@ namespace StudentPlanner.Api
                         IssuerSigningKey = key,
                         ClockSkew = TimeSpan.Zero
                     };
+
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnMessageReceived = context =>
+                        {
+                            var accessToken = context.Request.Query["access_token"].FirstOrDefault();
+                            var path = context.HttpContext.Request.Path;
+
+                            if (!string.IsNullOrWhiteSpace(accessToken)
+                                && path.StartsWithSegments("/hubs/notifications"))
+                            {
+                                context.Token = accessToken;
+                            }
+
+                            return Task.CompletedTask;
+                        }
+                    };
                 });
 
             builder.Services.AddAuthorization();
@@ -93,11 +112,15 @@ namespace StudentPlanner.Api
             builder.Services.AddScoped<IPersonalEventService, PersonalEventService>();
             builder.Services.AddScoped<IManagerEventRequestService, ManagerEventRequestService>();
             builder.Services.AddScoped<IAdminModerationService, AdminModerationService>();
+            builder.Services.AddScoped<IRealtimeNotificationService, RealtimeNotificationService>();
             builder.Services.AddScoped<IAdminUserService, AdminUserService>();
             builder.Services.AddScoped<IAcademicEventSubscriptionService, AcademicEventSubscriptionService>();
             builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
             builder.Services.AddScoped<IUsosService, MockUsosService>();
+            builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
+
+            builder.Services.AddSignalR();
 
             var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
             var corsOrigins = configuredOrigins is { Length: > 0 }
@@ -110,7 +133,8 @@ namespace StudentPlanner.Api
                 {
                     policy.WithOrigins(corsOrigins)
                         .AllowAnyHeader()
-                        .AllowAnyMethod();
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                 });
             });
 
@@ -167,6 +191,7 @@ namespace StudentPlanner.Api
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<NotificationsHub>("/hubs/notifications");
 
             await app.RunAsync();
         }
