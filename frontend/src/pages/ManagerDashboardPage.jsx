@@ -6,6 +6,9 @@ import { fetchFaculties } from '../api/facultiesApi.js'
 import { HttpError, extractErrorMessages } from '../api/httpError.js'
 import { clearAuth, getToken } from '../lib/authStorage.js'
 import EventRequestFormModal from '../components/EventRequestFormModal.jsx'
+import { showError, showInfo, showSuccess } from '../lib/toastStore.js'
+import { normalizeRealtimeNotification } from '../lib/realtimeNotificationUtils.js'
+import { areEventNotificationsEnabled } from '../lib/notificationPreferences.js'
 
 function normalizeLabel(value) {
   return String(value ?? '').trim().toLowerCase()
@@ -77,6 +80,40 @@ export default function ManagerDashboardPage() {
     }
   }, [])
 
+  useEffect(() => {
+    async function refreshRequests() {
+      try {
+        const r = await fetchEventRequests()
+        setRequests(Array.isArray(r) ? r : [])
+      } catch (e) {
+        if (e instanceof HttpError && e.status === 401) return
+        showError('Refresh failed', 'Could not reload event requests.')
+      }
+    }
+
+    function handleEventRequestReviewed(event) {
+      // ReceiveNotification already shows a toast when notifications are enabled.
+      // Show a fallback toast here so the manager is always informed of the review outcome.
+      if (!areEventNotificationsEnabled()) {
+        const notification = normalizeRealtimeNotification(event?.detail)
+        const status = String(notification?.requestStatus ?? '').toLowerCase()
+        if (status === 'approved') {
+          showSuccess('Request approved', 'Your event request was approved by the admin.')
+        } else if (status === 'rejected') {
+          showError('Request rejected', 'Your event request was rejected by the admin.')
+        } else {
+          showInfo('Request reviewed', 'An event request you submitted has been reviewed.')
+        }
+      }
+      refreshRequests()
+    }
+
+    window.addEventListener('event-request-reviewed', handleEventRequestReviewed)
+    return () => {
+      window.removeEventListener('event-request-reviewed', handleEventRequestReviewed)
+    }
+  }, [])
+
   function handleLogout() {
     clearAuth()
     window.location.assign('/login')
@@ -87,13 +124,16 @@ export default function ManagerDashboardPage() {
       const res = await createEventRequest(formData)
       setModalOpen(false)
       setRequests(prev => [...prev, res])
+      showSuccess('Request submitted', 'Your event request was sent for admin review.')
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
         window.location.assign('/login')
         return
       }
-      setGlobalError(getRequestErrorMessage(e, 'Could not create event request'))
+      const message = getRequestErrorMessage(e, 'Could not submit the request')
+      setGlobalError(message)
+      showError('Request failed', message)
     }
   }
 
