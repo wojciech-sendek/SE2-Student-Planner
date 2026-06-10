@@ -8,7 +8,7 @@ namespace StudentPlanner.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "User,Manager")]
+    [Authorize(Roles = "User,Manager,Admin")]
     public class PersonalEventsController : ControllerBase
     {
         private readonly IPersonalEventService _personalEventService;
