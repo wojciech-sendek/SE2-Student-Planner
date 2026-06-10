@@ -1,5 +1,6 @@
 import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import ToastContainer from './components/ToastContainer.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import RootRedirect from './components/RootRedirect.jsx'
 import HomePage from './pages/HomePage.jsx'
@@ -11,6 +12,7 @@ import ManagerDashboardPage from './pages/ManagerDashboardPage.jsx'
 
 function App() {
   return (
+    <>
     <Routes>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<LoginPage />} />
@@ -42,6 +44,8 @@ function App() {
       />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    <ToastContainer />
+    </>
   )
 }
 

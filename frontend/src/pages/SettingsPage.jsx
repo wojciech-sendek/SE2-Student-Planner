@@ -8,8 +8,16 @@ import {
   fetchUsosStatus,
   syncUsosSchedule,
 } from '../api/usosApi.js'
+import { showError, showSuccess } from '../lib/toastStore.js'
+import {
+  areEventNotificationsEnabled,
+  setEventNotificationsEnabled,
+} from '../lib/notificationPreferences.js'
 
 export default function SettingsPage() {
+  const [eventNotificationsEnabled, setEventNotificationsEnabledState] = useState(
+    () => areEventNotificationsEnabled(),
+  )
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState(null)
   const [usosStatus, setUsosStatus] = useState(null)
@@ -43,6 +51,22 @@ export default function SettingsPage() {
     loadUsosStatus()
   }, [loadUsosStatus])
 
+  useEffect(() => {
+    function handlePreferenceChange(event) {
+      setEventNotificationsEnabledState(event.detail?.enabled ?? areEventNotificationsEnabled())
+    }
+
+    window.addEventListener('event-notifications-preference-changed', handlePreferenceChange)
+    return () => {
+      window.removeEventListener('event-notifications-preference-changed', handlePreferenceChange)
+    }
+  }, [])
+
+  function handleToggleEventNotifications(enabled) {
+    setEventNotificationsEnabled(enabled)
+    setEventNotificationsEnabledState(enabled)
+  }
+
   async function handleStartUsosAuthorization() {
     setIsConnectingUsos(true)
     setUsosMessage(null)
@@ -53,7 +77,9 @@ export default function SettingsPage() {
       const message = data?.message ?? data?.Message
 
       if (!authorizationUrl) {
-        setUsosError(message ?? 'USOS OAuth is not configured on the backend.')
+        const err = message ?? 'USOS OAuth is not configured on the backend.'
+        setUsosError(err)
+        showError('USOS connection failed', err)
         return
       }
 
@@ -71,7 +97,9 @@ export default function SettingsPage() {
         return
       }
       const [message] = e instanceof HttpError ? extractErrorMessages(e.body) : []
-      setUsosError(message ?? 'Could not start USOS authorization.')
+      const err = message ?? 'Could not start USOS authorization.'
+      setUsosError(err)
+      showError('USOS connection failed', err)
     } finally {
       setIsConnectingUsos(false)
     }
@@ -84,7 +112,9 @@ export default function SettingsPage() {
     try {
       const events = await syncUsosSchedule()
       const count = Array.isArray(events) ? events.length : 0
-      setUsosMessage(`USOS schedule synchronized (${count} events).`)
+      const msg = `USOS schedule synchronized (${count} events).`
+      setUsosMessage(msg)
+      showSuccess('Schedule synced', msg)
       await loadUsosStatus()
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
@@ -93,7 +123,9 @@ export default function SettingsPage() {
         return
       }
       const [message] = e instanceof HttpError ? extractErrorMessages(e.body) : []
-      setUsosError(message ?? 'Could not synchronize USOS schedule.')
+      const err = message ?? 'Could not synchronize USOS schedule.'
+      setUsosError(err)
+      showError('Sync failed', err)
     } finally {
       setIsSyncingUsos(false)
     }
@@ -127,13 +159,16 @@ export default function SettingsPage() {
       }
 
       const data = await readJsonResponse(res)
-      setError(
+      const message =
         data?.message ??
-          data?.Message ??
-          'Failed to delete account.',
-      )
+        data?.Message ??
+        'Failed to delete account.'
+      setError(message)
+      showError('Account deletion failed', message)
     } catch {
-      setError('Network error. Is the API running?')
+      const message = 'Network error. Is the API running?'
+      setError(message)
+      showError('Account deletion failed', message)
     } finally {
       setIsDeleting(false)
     }
@@ -152,7 +187,32 @@ export default function SettingsPage() {
           </Link>
         </div>
 
-        <div className="rounded-xl border border-red-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Control whether live toast notifications appear for faculty events and request updates.
+          </p>
+          <label className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3">
+            <span className="text-sm font-medium text-slate-800">Event notifications</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={eventNotificationsEnabled}
+              onClick={() => handleToggleEventNotifications(!eventNotificationsEnabled)}
+              className={`relative h-7 w-12 rounded-full transition-colors ${
+                eventNotificationsEnabled ? 'bg-indigo-600' : 'bg-slate-300'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  eventNotificationsEnabled ? 'left-5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </label>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">USOS integration</h2>
           {isLoadingUsos ? (
             <p className="mt-2 text-sm text-slate-600">Loading USOS status…</p>

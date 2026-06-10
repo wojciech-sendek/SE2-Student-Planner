@@ -1,8 +1,9 @@
 ﻿import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
+import { clearAllToasts } from '../lib/toastStore.js'
 
-// Automatically cleanup after each test
 afterEach(() => {
+  clearAllToasts()
   cleanup()
 })
