@@ -180,5 +180,26 @@ namespace StudentPlanner.Api.Controllers
 
             return NoContent();
         }
+
+        [HttpPatch("notifications")]
+        [Authorize]
+        public async Task<IActionResult> UpdateNotifications([FromBody] UpdateNotificationsDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            var succeeded = await _authService.UpdateNotificationPreferenceAsync(userId, dto.Enabled);
+
+            if (!succeeded)
+            {
+                return BadRequest(new { Message = "Failed to update notification preferences." });
+            }
+
+            return Ok(new { Message = "Notification preferences updated.", Enabled = dto.Enabled });
+        }
     }
 }

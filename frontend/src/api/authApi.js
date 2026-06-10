@@ -44,3 +44,18 @@ export async function fetchCurrentUser() {
   if (!res.ok) throw new HttpError(res.status, data)
   return data
 }
+
+export async function updateNotificationPreference(enabled) {
+  const res = await fetch(apiUrl('/api/Auth/notifications'), {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ enabled }),
+  })
+  const data = await readJsonResponse(res)
+  if (!res.ok) throw new HttpError(res.status, data)
+  return data
+}

@@ -12,6 +12,7 @@ namespace StudentPlanner.Api.Entities
         public DateTime? UsosConnectedAtUtc { get; set; }
         public DateTime? UsosScheduleSyncedAtUtc { get; set; }
 
+        public bool NotificationsEnabled { get; set; } = true;
         public ICollection<Faculty> Faculties { get; set; } = new List<Faculty>();
         public ICollection<AcademicEvent> SubscribedAcademicEvents { get; set; } = new List<AcademicEvent>();
         public ICollection<PersonalEvent> PersonalEvents { get; set; } = new List<PersonalEvent>();

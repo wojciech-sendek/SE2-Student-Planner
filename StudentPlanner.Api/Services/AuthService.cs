@@ -171,7 +171,8 @@ namespace StudentPlanner.Api.Services
             {
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
-                Roles = roles
+                Roles = roles,
+                NotificationsEnabled = user.NotificationsEnabled
             };
         }
 
@@ -232,6 +233,21 @@ namespace StudentPlanner.Api.Services
             }
 
             return (true, Enumerable.Empty<string>());
+        }
+
+        public async Task<bool> UpdateNotificationPreferenceAsync(string userId, bool enabled)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user is null)
+            {
+                return false;
+            }
+
+            user.NotificationsEnabled = enabled;
+            var result = await _userManager.UpdateAsync(user);
+
+            return result.Succeeded;
         }
 
         private static bool IsAllowedUniversityEmail(string email)

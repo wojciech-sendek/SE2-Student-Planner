@@ -10,5 +10,6 @@ namespace StudentPlanner.Api.Services.Interfaces
         Task<bool> DeleteAccountAsync(string userId);
         Task ForgotPasswordAsync(ForgotPasswordRequestDto dto);
         Task<(bool Succeeded, IEnumerable<string> Errors)> ResetPasswordAsync(ResetPasswordRequestDto dto);
+        Task<bool> UpdateNotificationPreferenceAsync(string userId, bool enabled);
     }
 }

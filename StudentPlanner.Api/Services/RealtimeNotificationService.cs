@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using StudentPlanner.Api.Data;
 using StudentPlanner.Api.Dtos.Notifications;
 using StudentPlanner.Api.Hubs;
 using StudentPlanner.Api.Services.Interfaces;
@@ -8,13 +10,16 @@ namespace StudentPlanner.Api.Services
     public class RealtimeNotificationService : IRealtimeNotificationService
     {
         private readonly IHubContext<NotificationsHub> _hubContext;
+        private readonly ApplicationDbContext _dbContext;
         private readonly ILogger<RealtimeNotificationService> _logger;
 
         public RealtimeNotificationService(
             IHubContext<NotificationsHub> hubContext,
+            ApplicationDbContext dbContext,
             ILogger<RealtimeNotificationService> logger)
         {
             _hubContext = hubContext;
+            _dbContext = dbContext;
             _logger = logger;
         }
 
@@ -37,13 +42,24 @@ namespace StudentPlanner.Api.Services
                 return;
             }
 
-            var managerNotification = BuildManagerNotification(reviewNotification);
+            var manager = await _dbContext.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == reviewNotification.ManagerId);
 
-            await _hubContext.Clients.User(reviewNotification.ManagerId)
-                .SendAsync("ReceiveNotification", managerNotification);
+            if (manager is { NotificationsEnabled: true })
+            {
+                var managerNotification = BuildManagerNotification(reviewNotification);
 
-            await _hubContext.Clients.User(reviewNotification.ManagerId)
-                .SendAsync("EventRequestReviewed", reviewNotification);
+                await _hubContext.Clients.User(reviewNotification.ManagerId)
+                    .SendAsync("ReceiveNotification", managerNotification);
+
+                await _hubContext.Clients.User(reviewNotification.ManagerId)
+                    .SendAsync("EventRequestReviewed", reviewNotification);
+            }
+            else if (manager != null)
+            {
+                _logger.LogInformation("Skipping SignalR notification for manager {ManagerId}: notifications disabled.", reviewNotification.ManagerId);
+            }
 
             var userRecipientIds = reviewNotification.UserRecipientIds
                 .Where(userId => !string.IsNullOrWhiteSpace(userId))
@@ -56,13 +72,31 @@ namespace StudentPlanner.Api.Services
                 return;
             }
 
+            var enabledRecipientIds = await _dbContext.Users
+                .AsNoTracking()
+                .Where(u => userRecipientIds.Contains(u.Id))
+                .Where(u => u.NotificationsEnabled)
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            if (enabledRecipientIds.Count < userRecipientIds.Count)
+            {
+                var disabledCount = userRecipientIds.Count - enabledRecipientIds.Count;
+                _logger.LogInformation("Skipping SignalR notifications for {Count} users: notifications disabled.", disabledCount);
+            }
+
+            if (enabledRecipientIds.Count == 0)
+            {
+                return;
+            }
+
             var academicEventChange = BuildAcademicEventChange(reviewNotification);
             var userNotification = BuildUserAcademicEventNotification(reviewNotification, academicEventChange.Action);
 
-            await _hubContext.Clients.Users(userRecipientIds)
+            await _hubContext.Clients.Users(enabledRecipientIds)
                 .SendAsync("ReceiveNotification", userNotification);
 
-            await _hubContext.Clients.Users(userRecipientIds)
+            await _hubContext.Clients.Users(enabledRecipientIds)
                 .SendAsync("AcademicEventChanged", academicEventChange);
         }
 

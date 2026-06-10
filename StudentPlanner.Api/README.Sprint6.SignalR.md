@@ -35,6 +35,15 @@ the backend commits the moderation result and then publishes SignalR notificatio
 - For approved create requests, users assigned to the event faculty receive `ReceiveNotification` and `AcademicEventChanged`.
 - For approved update/delete requests, users subscribed to the target academic event receive `ReceiveNotification` and `AcademicEventChanged`.
 
+## Notification preferences
+
+Users can toggle real-time notifications on or off. When disabled, the server skips sending all SignalR messages to that user. The preference is stored in the `NotificationsEnabled` column of the `AspNetUsers` table and can be updated via:
+
+```text
+PATCH /api/Auth/notifications
+{ "enabled": false }
+```
+
 ## Minimal frontend/client connection example
 
 ```js

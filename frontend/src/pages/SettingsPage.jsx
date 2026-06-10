@@ -8,6 +8,7 @@ import {
   fetchUsosStatus,
   syncUsosSchedule,
 } from '../api/usosApi.js'
+import { fetchCurrentUser, updateNotificationPreference } from '../api/authApi.js'
 
 export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
@@ -18,6 +19,9 @@ export default function SettingsPage() {
   const [isSyncingUsos, setIsSyncingUsos] = useState(false)
   const [usosMessage, setUsosMessage] = useState(null)
   const [usosError, setUsosError] = useState(null)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false)
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true)
   const navigate = useNavigate()
 
   const loadUsosStatus = useCallback(async () => {
@@ -39,9 +43,25 @@ export default function SettingsPage() {
     }
   }, [navigate])
 
+  const loadPreferences = useCallback(async () => {
+    setIsLoadingPrefs(true)
+    try {
+      const user = await fetchCurrentUser()
+      setNotificationsEnabled(user.notificationsEnabled ?? user.NotificationsEnabled ?? true)
+    } catch (e) {
+      if (e instanceof HttpError && e.status === 401) {
+        clearAuth()
+        navigate('/login', { replace: true })
+      }
+    } finally {
+      setIsLoadingPrefs(false)
+    }
+  }, [navigate])
+
   useEffect(() => {
     loadUsosStatus()
-  }, [loadUsosStatus])
+    loadPreferences()
+  }, [loadUsosStatus, loadPreferences])
 
   async function handleStartUsosAuthorization() {
     setIsConnectingUsos(true)
@@ -139,6 +159,20 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleToggleNotifications() {
+    const newValue = !notificationsEnabled
+    setIsUpdatingNotifications(true)
+    try {
+      await updateNotificationPreference(newValue)
+      setNotificationsEnabled(newValue)
+    } catch (e) {
+      const [message] = e instanceof HttpError ? extractErrorMessages(e.body) : []
+      setError(message ?? 'Failed to update notification preferences.')
+    } finally {
+      setIsUpdatingNotifications(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-xl">
@@ -152,7 +186,34 @@ export default function SettingsPage() {
           </Link>
         </div>
 
-        <div className="rounded-xl border border-red-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Choose whether you want to receive real-time notifications about event changes.
+          </p>
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-slate-900">Enable real-time notifications</span>
+              <span className="text-xs text-slate-500">Toast notifications and browser alerts</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleNotifications}
+              disabled={isUpdatingNotifications || isLoadingPrefs}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                notificationsEnabled ? 'bg-indigo-600' : 'bg-slate-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  notificationsEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-red-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">USOS integration</h2>
           {isLoadingUsos ? (
             <p className="mt-2 text-sm text-slate-600">Loading USOS status…</p>
