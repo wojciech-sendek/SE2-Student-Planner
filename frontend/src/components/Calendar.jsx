@@ -7,7 +7,7 @@ import {
 } from '../api/eventsApi.js'
 import { extractErrorMessages, HttpError } from '../api/httpError.js'
 import { clearAuth } from '../lib/authStorage.js'
-import { showError } from '../lib/toastStore.js'
+import { showError, showSuccess } from '../lib/toastStore.js'
 import EventFormModal from './EventFormModal.jsx'
 import EventDetailsModal from './EventDetailsModal.jsx'
 import ConfirmDeleteModal from './ConfirmDeleteModal.jsx'
@@ -182,6 +182,7 @@ export default function Calendar() {
       } else {
         await loadEvents()
       }
+      showSuccess('Event created', 'Your event has been created successfully.')
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
@@ -207,6 +208,7 @@ export default function Calendar() {
       } else {
         await loadEvents()
       }
+      showSuccess('Event updated', 'Your event has been updated successfully.')
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
@@ -225,6 +227,7 @@ export default function Calendar() {
       await deletePersonalEvent(id)
       setModal(null)
       setEvents(prev => prev.filter(e => !(e.isPersonal && String(e.id) === String(id))))
+      showSuccess('Event deleted', 'Your event has been deleted.')
     } catch (e) {
       if (e instanceof HttpError && e.status === 401) {
         clearAuth()
