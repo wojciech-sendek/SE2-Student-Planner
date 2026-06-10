@@ -10,15 +10,10 @@ import {
 } from '../api/usosApi.js'
 import { fetchCurrentUser, updateNotificationPreference } from '../api/authApi.js'
 import { showError, showSuccess } from '../lib/toastStore.js'
-import {
-  areEventNotificationsEnabled,
-  setEventNotificationsEnabled,
-} from '../lib/notificationPreferences.js'
+import { setEventNotificationsEnabled } from '../lib/notificationPreferences.js'
 
 export default function SettingsPage() {
-  const [eventNotificationsEnabled, setEventNotificationsEnabledState] = useState(
-    () => areEventNotificationsEnabled(),
-  )
+
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState(null)
   const [usosStatus, setUsosStatus] = useState(null)
@@ -71,21 +66,7 @@ export default function SettingsPage() {
     loadPreferences()
   }, [loadUsosStatus, loadPreferences])
 
-  useEffect(() => {
-    function handlePreferenceChange(event) {
-      setEventNotificationsEnabledState(event.detail?.enabled ?? areEventNotificationsEnabled())
-    }
 
-    window.addEventListener('event-notifications-preference-changed', handlePreferenceChange)
-    return () => {
-      window.removeEventListener('event-notifications-preference-changed', handlePreferenceChange)
-    }
-  }, [])
-
-  function handleToggleEventNotifications(enabled) {
-    setEventNotificationsEnabled(enabled)
-    setEventNotificationsEnabledState(enabled)
-  }
 
   async function handleStartUsosAuthorization() {
     setIsConnectingUsos(true)
@@ -201,7 +182,6 @@ export default function SettingsPage() {
       await updateNotificationPreference(newValue)
       setNotificationsEnabled(newValue)
       setEventNotificationsEnabled(newValue)
-      setEventNotificationsEnabledState(newValue)
     } catch (e) {
       const [message] = e instanceof HttpError ? extractErrorMessages(e.body) : []
       setError(message ?? 'Failed to update notification preferences.')
