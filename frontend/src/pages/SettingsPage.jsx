@@ -200,6 +200,8 @@ export default function SettingsPage() {
     try {
       await updateNotificationPreference(newValue)
       setNotificationsEnabled(newValue)
+      setEventNotificationsEnabled(newValue)
+      setEventNotificationsEnabledState(newValue)
     } catch (e) {
       const [message] = e instanceof HttpError ? extractErrorMessages(e.body) : []
       setError(message ?? 'Failed to update notification preferences.')
@@ -224,7 +226,7 @@ export default function SettingsPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
           <p className="mt-1 text-sm text-slate-600">
-            Choose whether you want to receive real-time notifications about event changes.
+            Control whether you receive real-time toast notifications for faculty events and request updates.
           </p>
           <div className="mt-4 flex items-center justify-between">
             <div className="flex flex-col">
@@ -246,31 +248,6 @@ export default function SettingsPage() {
               />
             </button>
           </div>
-        </div>
-
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Notifications</h2>
-          <p className="mt-2 text-sm text-slate-600">
-            Control whether live toast notifications appear for faculty events and request updates.
-          </p>
-          <label className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-slate-200 px-4 py-3">
-            <span className="text-sm font-medium text-slate-800">Event notifications</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={eventNotificationsEnabled}
-              onClick={() => handleToggleEventNotifications(!eventNotificationsEnabled)}
-              className={`relative h-7 w-12 rounded-full transition-colors ${
-                eventNotificationsEnabled ? 'bg-indigo-600' : 'bg-slate-300'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-                  eventNotificationsEnabled ? 'left-5' : 'left-0.5'
-                }`}
-              />
-            </button>
-          </label>
         </div>
 
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
