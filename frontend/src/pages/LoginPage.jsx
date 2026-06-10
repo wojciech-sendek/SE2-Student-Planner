@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { login, forgotPassword } from '../api/authApi.js'
 import { HttpError, extractErrorMessages } from '../api/httpError.js'
 import { saveAuthFromResponse } from '../lib/authStorage.js'
+import { showError } from '../lib/toastStore.js'
 
 const REMEMBER_EMAIL_KEY = 'student-planner-remember-email'
 
@@ -67,25 +68,33 @@ export default function LoginPage() {
       if (rememberMe) localStorage.setItem(REMEMBER_EMAIL_KEY, email.trim())
       else localStorage.removeItem(REMEMBER_EMAIL_KEY)
       setPassword('')
-      navigate('/app', { replace: true })
+      navigate('/app', { replace: true, state: { loginSuccess: true } })
     } catch (err) {
       if (err instanceof HttpError) {
         const msgs = extractErrorMessages(err.body)
         if (err.status === 401) {
-          setApiError('Invalid email or password.')
+          const message = 'Invalid email or password.'
+          setApiError(message)
+          showError('Sign-in failed', message)
         } else if (err.status === 409) {
           const message = msgs.join(' ') || 'USOS authorization required.'
           setApiError(message)
           setRequiresUsosAuthorization(message.toLowerCase().includes('usos authorization required'))
+          showError('Sign-in failed', message)
         } else if (msgs.length) {
-          setApiError(msgs.join(' '))
+          const message = msgs.join(' ')
+          setApiError(message)
+          showError('Sign-in failed', message)
         } else {
-          setApiError(err.message || 'Sign-in failed.')
+          const message = err.message || 'Sign-in failed.'
+          setApiError(message)
+          showError('Sign-in failed', message)
         }
       } else {
-        setApiError(
-          'Could not reach the API. Run the backend on port 5289 or set VITE_API_BASE_URL.',
-        )
+        const message =
+          'Could not reach the API. Run the backend on port 5289 or set VITE_API_BASE_URL.'
+        setApiError(message)
+        showError('Connection error', message)
       }
     } finally {
       setIsSubmitting(false)

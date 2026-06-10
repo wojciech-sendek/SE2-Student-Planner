@@ -1,12 +1,23 @@
-import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { fetchCurrentUser } from '../api/authApi.js'
 import { HttpError } from '../api/httpError.js'
 import { clearAuth, getToken } from '../lib/authStorage.js'
 import Calendar from '../components/Calendar.jsx'
+import { showSuccess } from '../lib/toastStore.js'
 
 export default function HomePage() {
   const [user, setUser] = useState(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const loginToastShownRef = useRef(false)
+
+  useEffect(() => {
+    if (!location.state?.loginSuccess || loginToastShownRef.current) return
+    loginToastShownRef.current = true
+    showSuccess('Signed in', 'Welcome back to Student Planner.')
+    navigate('/app', { replace: true, state: null })
+  }, [location.state?.loginSuccess, navigate])
 
   useEffect(() => {
     if (!getToken()) return

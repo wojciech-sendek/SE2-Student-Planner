@@ -14,3 +14,13 @@ export function apiUrl(path) {
   const base = getApiBaseUrl()
   return base ? `${base}${p}` : p
 }
+
+export function hubUrl(path = '/hubs/notifications') {
+  const p = path.startsWith('/') ? path : `/${path}`
+  const base = getApiBaseUrl()
+  if (base) return `${base}${p}`
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${p}`
+  }
+  return p
+}

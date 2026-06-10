@@ -7,6 +7,7 @@ import {
 } from '../api/eventsApi.js'
 import { extractErrorMessages, HttpError } from '../api/httpError.js'
 import { clearAuth } from '../lib/authStorage.js'
+import { showError } from '../lib/toastStore.js'
 import EventFormModal from './EventFormModal.jsx'
 import EventDetailsModal from './EventDetailsModal.jsx'
 import ConfirmDeleteModal from './ConfirmDeleteModal.jsx'
@@ -148,7 +149,9 @@ export default function Calendar() {
         window.location.assign('/login')
         return
       }
-      setGlobalError(getRequestErrorMessage(e, 'Could not load events'))
+      const message = getRequestErrorMessage(e, 'Could not load events')
+      setGlobalError(message)
+      showError('Calendar error', message)
     } finally {
       setLoading(false)
     }
@@ -156,6 +159,17 @@ export default function Calendar() {
 
   useEffect(() => {
     loadEvents()
+  }, [loadEvents])
+
+  useEffect(() => {
+    function handleAcademicEventChanged() {
+      loadEvents()
+    }
+
+    window.addEventListener('academic-event-changed', handleAcademicEventChanged)
+    return () => {
+      window.removeEventListener('academic-event-changed', handleAcademicEventChanged)
+    }
   }, [loadEvents])
 
   async function handleCreate(formData) {
@@ -175,7 +189,9 @@ export default function Calendar() {
         return
       }
       setModal(null)
-      setGlobalError(getRequestErrorMessage(e, 'Could not create the event'))
+      const message = getRequestErrorMessage(e, 'Could not create the event')
+      setGlobalError(message)
+      showError('Event creation failed', message)
     }
   }
 
@@ -198,7 +214,9 @@ export default function Calendar() {
         return
       }
       setModal(null)
-      setGlobalError(getRequestErrorMessage(e, 'Could not update the event'))
+      const message = getRequestErrorMessage(e, 'Could not update the event')
+      setGlobalError(message)
+      showError('Event update failed', message)
     }
   }
 
@@ -214,7 +232,9 @@ export default function Calendar() {
         return
       }
       setModal(null)
-      setGlobalError(getRequestErrorMessage(e, 'Could not delete the event'))
+      const message = getRequestErrorMessage(e, 'Could not delete the event')
+      setGlobalError(message)
+      showError('Deletion failed', message)
     }
   }
 
