@@ -8,6 +8,7 @@ import {
   fetchUsosStatus,
   syncUsosSchedule,
 } from '../api/usosApi.js'
+import { fetchCurrentUser, updateNotificationPreference } from '../api/authApi.js'
 import { showError, showSuccess } from '../lib/toastStore.js'
 import {
   areEventNotificationsEnabled,
